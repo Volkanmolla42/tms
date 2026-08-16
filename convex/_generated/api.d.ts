@@ -9,8 +9,13 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as brands from "../brands.js";
+import type * as categories from "../categories.js";
 import type * as http from "../http.js";
-import type * as shipments from "../shipments.js";
+import type * as inquiries from "../inquiries.js";
+import type * as products from "../products.js";
+import type * as seed from "../seed.js";
+import type * as siteSettings from "../siteSettings.js";
 import type * as users from "../users.js";
 
 import type {
@@ -21,8 +26,13 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  brands: typeof brands;
+  categories: typeof categories;
   http: typeof http;
-  shipments: typeof shipments;
+  inquiries: typeof inquiries;
+  products: typeof products;
+  seed: typeof seed;
+  siteSettings: typeof siteSettings;
   users: typeof users;
 }>;
 

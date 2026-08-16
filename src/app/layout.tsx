@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "TMS",
-  description: "Transport Management System",
+  title: "TMS İTHALAT | Türkiye'nin Oto Elektronik Parça Merkezi",
+  description: "ECU (Motor Beyinleri), ABS, Airbag, BCM, BSI, SAM ve binlerce orijinal oto elektronik kontrol modülleri. Test edilmiş, garantili ve aynı gün kargo.",
 };
 
 export default function RootLayout({
