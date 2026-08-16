@@ -265,36 +265,35 @@ export default function AdminPage() {
     }
   };
 
-  // FILE UPLOAD HANDLERS
+  // FILE UPLOAD HANDLERS (Local Disk / aaPanel Storage)
   const handleProductFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
     setUploadingImage(true);
 
     try {
-      const newStorageIds = [...uploadedStorageIds];
-      const newPreviews = [...previewImages];
-
+      const formData = new FormData();
       for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const postUrl = await generateUploadUrl();
-        const result = await fetch(postUrl, {
-          method: "POST",
-          headers: { "Content-Type": file.type || "application/octet-stream" },
-          body: file,
-        });
-        const { storageId } = await result.json();
-        newStorageIds.push(storageId);
-        newPreviews.push(URL.createObjectURL(file));
+        formData.append("files", files[i]);
       }
 
-      setUploadedStorageIds(newStorageIds);
-      setPreviewImages(newPreviews);
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+
+      if (data.success && data.urls && data.urls.length > 0) {
+        setPreviewImages((prev) => [...prev, ...data.urls]);
+      } else {
+        alert(data.message || "Fotoğraf yüklenirken hata oluştu.");
+      }
     } catch (err) {
       console.error("Upload error:", err);
       alert("Fotoğraf yüklenirken hata oluştu.");
     } finally {
       setUploadingImage(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -304,21 +303,27 @@ export default function AdminPage() {
     setCatUploading(true);
 
     try {
-      const file = files[0];
-      const postUrl = await generateUploadUrl();
-      const result = await fetch(postUrl, {
+      const formData = new FormData();
+      formData.append("file", files[0]);
+
+      const res = await fetch("/api/upload", {
         method: "POST",
-        headers: { "Content-Type": file.type || "application/octet-stream" },
-        body: file,
+        body: formData,
       });
-      const { storageId } = await result.json();
-      setCatStorageId(storageId);
-      setCatPreviewImage(URL.createObjectURL(file));
+      const data = await res.json();
+
+      if (data.success && data.url) {
+        setCatPreviewImage(data.url);
+        setCatStorageId(null);
+      } else {
+        alert(data.message || "Kategori görseli yüklenirken hata oluştu.");
+      }
     } catch (err) {
       console.error("Category upload error:", err);
       alert("Kategori görseli yüklenirken hata oluştu.");
     } finally {
       setCatUploading(false);
+      if (catFileInputRef.current) catFileInputRef.current.value = "";
     }
   };
 
