@@ -1,0 +1,6 @@
+cd /www/wwwroot/www.tmsithalat.com
+git pull
+npm run build
+
+
+pm2 restart all
