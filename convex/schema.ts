@@ -11,6 +11,7 @@ export default defineSchema({
     slug: v.string(), // URL slug (Örn: motor-beyinleri-ecu)
     description: v.optional(v.string()),
     image: v.optional(v.string()),
+    imageStorageId: v.optional(v.id("_storage")), // Convex Storage Dosya ID'si
     order: v.optional(v.number()),
     isActive: v.optional(v.boolean()),
     // SEO & Meta Alanları
@@ -49,7 +50,8 @@ export default defineSchema({
     condition: v.string(), // Durum ("Orijinal Çıkma", "Sıfır - Orijinal", "Revizyonlu")
     inStock: v.boolean(), // Stok Durumu: true / false
     description: v.string(), // Detaylı Ürün Açıklaması & Kullanım Alanları
-    images: v.array(v.string()), // Ürün Görselleri
+    images: v.array(v.string()), // Ürün Görselleri (Çözümlenmiş URL'ler)
+    imageStorageIds: v.optional(v.array(v.id("_storage"))), // Convex Storage Görsel ID Listesi
 
     // SEO & Meta Alanları
     metaTitle: v.optional(v.string()), // Meta Başlığı

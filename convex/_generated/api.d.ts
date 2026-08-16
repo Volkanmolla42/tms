@@ -11,6 +11,7 @@
 import type * as auth from "../auth.js";
 import type * as brands from "../brands.js";
 import type * as categories from "../categories.js";
+import type * as files from "../files.js";
 import type * as http from "../http.js";
 import type * as inquiries from "../inquiries.js";
 import type * as products from "../products.js";
@@ -28,6 +29,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   brands: typeof brands;
   categories: typeof categories;
+  files: typeof files;
   http: typeof http;
   inquiries: typeof inquiries;
   products: typeof products;

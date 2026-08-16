@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
 import {
   Package,
@@ -19,6 +19,10 @@ import {
   FolderPlus,
   Globe,
   Tag,
+  UploadCloud,
+  Image as ImageIcon,
+  Loader2,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,7 +57,9 @@ export default function AdminPage() {
   const [condition, setCondition] = useState("Orijinal Çıkma");
   const [inStock, setInStock] = useState(true);
   const [description, setDescription] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
+  const [previewImages, setPreviewImages] = useState<string[]>([]);
+  const [uploadedStorageIds, setUploadedStorageIds] = useState<Id<"_storage">[]>([]);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [metaTitle, setMetaTitle] = useState("");
   const [metaDescription, setMetaDescription] = useState("");
   const [metaKeywords, setMetaKeywords] = useState("");
@@ -65,13 +71,18 @@ export default function AdminPage() {
   const [catName, setCatName] = useState("");
   const [catSlug, setCatSlug] = useState("");
   const [catDescription, setCatDescription] = useState("");
-  const [catImage, setCatImage] = useState("");
+  const [catPreviewImage, setCatPreviewImage] = useState<string>("");
+  const [catStorageId, setCatStorageId] = useState<Id<"_storage"> | null>(null);
+  const [catUploading, setCatUploading] = useState(false);
   const [catOrder, setCatOrder] = useState<number>(1);
   const [catIsActive, setCatIsActive] = useState<boolean>(true);
   const [catMetaTitle, setCatMetaTitle] = useState("");
   const [catMetaDescription, setCatMetaDescription] = useState("");
   const [catMetaKeywords, setCatMetaKeywords] = useState("");
   const [categoryError, setCategoryError] = useState<string>("");
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const catFileInputRef = useRef<HTMLInputElement>(null);
 
   // Queries
   const products = useQuery(api.products.list, { searchTerm: searchProduct || undefined, limit: 100 });
@@ -80,6 +91,7 @@ export default function AdminPage() {
   const siteSettings = useQuery(api.siteSettings.get);
 
   // Mutations
+  const generateUploadUrl = useMutation(api.files.generateUploadUrl);
   const createProduct = useMutation(api.products.create);
   const updateProduct = useMutation(api.products.update);
   const toggleStock = useMutation(api.products.toggleStock);
@@ -101,6 +113,65 @@ export default function AdminPage() {
   const [settingsAnnouncement, setSettingsAnnouncement] = useState("");
   const [settingsSaved, setSettingsSaved] = useState(false);
 
+  // CONVEX STORAGE FILE UPLOAD HANDLERS
+  const handleProductFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setUploadingImage(true);
+
+    try {
+      const newStorageIds = [...uploadedStorageIds];
+      const newPreviews = [...previewImages];
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        // 1. Get upload URL from Convex Storage
+        const postUrl = await generateUploadUrl();
+        // 2. Upload file to Convex Storage
+        const result = await fetch(postUrl, {
+          method: "POST",
+          headers: { "Content-Type": file.type || "application/octet-stream" },
+          body: file,
+        });
+        const { storageId } = await result.json();
+        newStorageIds.push(storageId);
+        newPreviews.push(URL.createObjectURL(file));
+      }
+
+      setUploadedStorageIds(newStorageIds);
+      setPreviewImages(newPreviews);
+    } catch (err) {
+      console.error("Storage upload error:", err);
+      alert("Fotoğraf Convex Storage'a yüklenirken hata oluştu.");
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleCategoryFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setCatUploading(true);
+
+    try {
+      const file = files[0];
+      const postUrl = await generateUploadUrl();
+      const result = await fetch(postUrl, {
+        method: "POST",
+        headers: { "Content-Type": file.type || "application/octet-stream" },
+        body: file,
+      });
+      const { storageId } = await result.json();
+      setCatStorageId(storageId);
+      setCatPreviewImage(URL.createObjectURL(file));
+    } catch (err) {
+      console.error("Category storage upload error:", err);
+      alert("Kategori görseli yüklenirken hata oluştu.");
+    } finally {
+      setCatUploading(false);
+    }
+  };
+
   // PRODUCT HANDLERS
   const resetProductForm = () => {
     setTitle("");
@@ -115,7 +186,8 @@ export default function AdminPage() {
     setCondition("Orijinal Çıkma");
     setInStock(true);
     setDescription("");
-    setImageUrl("");
+    setPreviewImages([]);
+    setUploadedStorageIds([]);
     setMetaTitle("");
     setMetaDescription("");
     setMetaKeywords("");
@@ -135,7 +207,8 @@ export default function AdminPage() {
     setCondition(p.condition);
     setInStock(p.inStock);
     setDescription(p.description);
-    setImageUrl(p.images?.[0] || "");
+    setPreviewImages(p.images || []);
+    setUploadedStorageIds(p.imageStorageIds || []);
     setMetaTitle(p.metaTitle || "");
     setMetaDescription(p.metaDescription || "");
     setMetaKeywords(p.metaKeywords || "");
@@ -159,7 +232,7 @@ export default function AdminPage() {
       ? slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-")
       : `${brand.toLowerCase().replace(/[^a-z0-9]/g, "-")}-${oemNumber.toLowerCase().replace(/[^a-z0-9]/g, "-")}-motor-beyni-ecu`;
 
-    const images = imageUrl ? [imageUrl] : ["/images/cat-ecu.jpg"];
+    const images = previewImages.length > 0 ? previewImages : ["/images/cat-ecu.jpg"];
     const tags = tagsInput
       .split(",")
       .map((t) => t.trim())
@@ -177,6 +250,7 @@ export default function AdminPage() {
       inStock,
       description: description || `${title} test edilmiş orijinal oto elektronik parça.`,
       images,
+      imageStorageIds: uploadedStorageIds.length > 0 ? uploadedStorageIds : undefined,
       metaTitle: metaTitle.trim() || undefined,
       metaDescription: metaDescription.trim() || undefined,
       metaKeywords: metaKeywords.trim() || undefined,
@@ -201,7 +275,8 @@ export default function AdminPage() {
     setCatName("");
     setCatSlug("");
     setCatDescription("");
-    setCatImage("");
+    setCatPreviewImage("");
+    setCatStorageId(null);
     setCatOrder((categories?.length || 0) + 1);
     setCatIsActive(true);
     setCatMetaTitle("");
@@ -216,8 +291,9 @@ export default function AdminPage() {
     setCatName(c.name);
     setCatSlug(c.slug);
     setCatDescription(c.description || "");
-    setCatImage(c.image || "");
-    setCatOrder(c.order);
+    setCatPreviewImage(c.image || "");
+    setCatStorageId(c.imageStorageId || null);
+    setCatOrder(c.order ?? 1);
     setCatIsActive(c.isActive ?? true);
     setCatMetaTitle(c.metaTitle || "");
     setCatMetaDescription(c.metaDescription || "");
@@ -239,7 +315,8 @@ export default function AdminPage() {
         name: catName,
         slug: generatedSlug,
         description: catDescription || undefined,
-        image: catImage || undefined,
+        image: catPreviewImage || undefined,
+        imageStorageId: catStorageId || undefined,
         order: Number(catOrder),
         isActive: catIsActive,
         metaTitle: catMetaTitle.trim() || undefined,
@@ -410,7 +487,7 @@ export default function AdminPage() {
                   resetProductForm();
                   setAddProductModalOpen(true);
                 }}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs gap-1.5 h-10 rounded-xl"
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs gap-1.5 h-10 rounded-xl cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
                 <span>Yeni Ürün Ekle</span>
@@ -539,7 +616,7 @@ export default function AdminPage() {
                   resetCategoryForm();
                   setCategoryModalOpen(true);
                 }}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs gap-1.5 h-10 rounded-xl"
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs gap-1.5 h-10 rounded-xl cursor-pointer"
               >
                 <FolderPlus className="w-4 h-4" />
                 <span>Yeni Kategori Ekle</span>
@@ -564,9 +641,9 @@ export default function AdminPage() {
                       <h4 className="font-extrabold text-xs text-slate-900 truncate">{cat.name}</h4>
                       <p className="text-[11px] text-slate-400 font-mono truncate">{cat.slug}</p>
                       <div className="flex items-center gap-2 mt-1">
-                        <span className="text-[10px] text-slate-500 font-bold">Sıra: {cat.order}</span>
-                        <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${cat.isActive ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"}`}>
-                          {cat.isActive ? "Aktif" : "Pasif"}
+                        <span className="text-[10px] text-slate-500 font-bold">Sıra: {cat.order ?? 1}</span>
+                        <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${cat.isActive !== false ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"}`}>
+                          {cat.isActive !== false ? "Aktif" : "Pasif"}
                         </span>
                       </div>
                     </div>
@@ -760,7 +837,7 @@ export default function AdminPage() {
         )}
       </div>
 
-      {/* Product Add / Edit Modal (Complete Parts Model) */}
+      {/* Product Add / Edit Modal (With Convex Storage Upload) */}
       <Dialog open={addProductModalOpen} onOpenChange={setAddProductModalOpen}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -768,7 +845,7 @@ export default function AdminPage() {
               {editingProduct ? "Ürünü Düzenle" : "Yeni Ürün Ekle"}
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
-              Oto elektronik parçanın tüm temel ve SEO bilgilerini giriniz.
+              Oto elektronik parçanın tüm temel, depo ve SEO bilgilerini giriniz.
             </DialogDescription>
           </DialogHeader>
 
@@ -843,29 +920,80 @@ export default function AdminPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Durum</label>
-                <select
-                  value={condition}
-                  onChange={(e) => setCondition(e.target.value)}
-                  className="w-full h-10 rounded-lg border border-slate-200 bg-white px-3 font-semibold text-slate-800"
+            <div>
+              <label className="font-bold text-slate-700 block mb-1">Durum</label>
+              <select
+                value={condition}
+                onChange={(e) => setCondition(e.target.value)}
+                className="w-full h-10 rounded-lg border border-slate-200 bg-white px-3 font-semibold text-slate-800"
+              >
+                <option value="Orijinal Çıkma">Orijinal Çıkma</option>
+                <option value="Sıfır - Orijinal">Sıfır - Orijinal</option>
+                <option value="Revizyonlu">Revizyonlu</option>
+                <option value="Sıfırlanmış - Virgin">Sıfırlanmış - Virgin</option>
+              </select>
+            </div>
+
+            {/* Convex Storage Upload Section */}
+            <div className="p-3.5 bg-blue-50/50 rounded-xl border border-blue-100 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <label className="font-bold text-slate-900 flex items-center gap-1.5">
+                  <ImageIcon className="w-4 h-4 text-blue-600" />
+                  <span>Ürün Fotoğrafları (Convex Storage)</span>
+                </label>
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  ref={fileInputRef}
+                  onChange={handleProductFileUpload}
+                  className="hidden"
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={uploadingImage}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="bg-white border-blue-300 text-blue-700 hover:bg-blue-50 text-xs font-bold gap-1 cursor-pointer"
                 >
-                  <option value="Orijinal Çıkma">Orijinal Çıkma</option>
-                  <option value="Sıfır - Orijinal">Sıfır - Orijinal</option>
-                  <option value="Revizyonlu">Revizyonlu</option>
-                  <option value="Sıfırlanmış - Virgin">Sıfırlanmış - Virgin</option>
-                </select>
+                  {uploadingImage ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Yükleniyor...</span>
+                    </>
+                  ) : (
+                    <>
+                      <UploadCloud className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Fotoğraf Yükle</span>
+                    </>
+                  )}
+                </Button>
               </div>
 
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Görsel URL Adresi</label>
-                <Input
-                  placeholder="/images/cat-ecu.jpg veya https://..."
-                  value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
-                />
-              </div>
+              {previewImages.length > 0 ? (
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {previewImages.map((img, idx) => (
+                    <div key={idx} className="relative w-16 h-16 rounded-lg border border-slate-200 overflow-hidden bg-white group">
+                      <img src={img} alt={`Preview ${idx}`} className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPreviewImages(previewImages.filter((_, i) => i !== idx));
+                          setUploadedStorageIds(uploadedStorageIds.filter((_, i) => i !== idx));
+                        }}
+                        className="absolute top-0.5 right-0.5 bg-red-600 text-white rounded-full p-0.5 opacity-80 hover:opacity-100 cursor-pointer"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-[11px] text-slate-500">
+                  Henüz fotoğraf yüklenmedi. Cihazınızdan doğrudan fotoğraf seçebilirsiniz.
+                </p>
+              )}
             </div>
 
             <div>
@@ -876,7 +1004,7 @@ export default function AdminPage() {
                 placeholder="Motor kontrol ünitesi özellikleri, kullanım alanları, montaj uyarıları..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                rows={5}
+                rows={4}
               />
             </div>
 
@@ -965,7 +1093,7 @@ export default function AdminPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Category Add / Edit Modal */}
+      {/* Category Add / Edit Modal (With Convex Storage Upload) */}
       <Dialog open={categoryModalOpen} onOpenChange={setCategoryModalOpen}>
         <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -1010,13 +1138,61 @@ export default function AdminPage() {
               />
             </div>
 
-            <div>
-              <label className="font-bold text-slate-700 block mb-1">Görsel URL</label>
-              <Input
-                placeholder="/images/cat-ecu.jpg"
-                value={catImage}
-                onChange={(e) => setCatImage(e.target.value)}
-              />
+            {/* Convex Storage Upload for Category */}
+            <div className="p-3 bg-blue-50/50 rounded-xl border border-blue-100 space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="font-bold text-slate-900 flex items-center gap-1.5">
+                  <ImageIcon className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Kategori Görseli (Convex Storage)</span>
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  ref={catFileInputRef}
+                  onChange={handleCategoryFileUpload}
+                  className="hidden"
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={catUploading}
+                  onClick={() => catFileInputRef.current?.click()}
+                  className="bg-white border-blue-300 text-blue-700 hover:bg-blue-50 text-xs font-bold gap-1 cursor-pointer h-7"
+                >
+                  {catUploading ? (
+                    <>
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      <span>Yükleniyor...</span>
+                    </>
+                  ) : (
+                    <>
+                      <UploadCloud className="w-3 h-3 text-blue-600" />
+                      <span>Görsel Seç</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {catPreviewImage ? (
+                <div className="relative w-16 h-16 rounded-lg border border-slate-200 overflow-hidden bg-white">
+                  <img src={catPreviewImage} alt="Category Preview" className="w-full h-full object-contain" />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCatPreviewImage("");
+                      setCatStorageId(null);
+                    }}
+                    className="absolute top-0.5 right-0.5 bg-red-600 text-white rounded-full p-0.5 opacity-80 hover:opacity-100 cursor-pointer"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ) : (
+                <p className="text-[11px] text-slate-500">
+                  Kategori ikon veya fotoğrafını yükleyin.
+                </p>
+              )}
             </div>
 
             <div>

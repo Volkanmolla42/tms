@@ -2,6 +2,33 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Doc, Id } from "./_generated/dataModel";
 
+// Helper to resolve product image URLs from storage IDs
+async function resolveProductImages(ctx: any, p: Doc<"products">) {
+  let images = p.images || [];
+
+  if (p.imageStorageIds && p.imageStorageIds.length > 0) {
+    const resolvedUrls = await Promise.all(
+      p.imageStorageIds.map(async (storageId) => await ctx.storage.getUrl(storageId))
+    );
+    const validUrls = resolvedUrls.filter((url): url is string => Boolean(url));
+    if (validUrls.length > 0) {
+      images = validUrls;
+    }
+  }
+
+  const cat = p.categoryId
+    ? ((await ctx.db.get(p.categoryId as Id<"categories">)) as Doc<"categories"> | null)
+    : null;
+
+  return {
+    ...p,
+    images,
+    categoryName: cat?.name || "Oto Elektronik",
+    categorySlug: cat?.slug || "diger",
+    category: cat ? { _id: cat._id, name: cat.name, slug: cat.slug } : null,
+  };
+}
+
 export const list = query({
   args: {
     categorySlug: v.optional(v.string()),
@@ -79,18 +106,7 @@ export const list = query({
       });
     }
 
-    // Populate relational category details for each product
-    return await Promise.all(
-      filtered.map(async (p) => {
-        const cat = p.categoryId ? ((await ctx.db.get(p.categoryId as Id<"categories">)) as Doc<"categories"> | null) : null;
-        return {
-          ...p,
-          categoryName: cat?.name || "Oto Elektronik",
-          categorySlug: cat?.slug || "diger",
-          category: cat ? { _id: cat._id, name: cat.name, slug: cat.slug } : null,
-        };
-      })
-    );
+    return await Promise.all(filtered.map((p) => resolveProductImages(ctx, p)));
   },
 });
 
@@ -101,16 +117,7 @@ export const getFeatured = query({
       .query("products")
       .take(args.limit ?? 12);
 
-    return await Promise.all(
-      items.map(async (p) => {
-        const cat = p.categoryId ? ((await ctx.db.get(p.categoryId as Id<"categories">)) as Doc<"categories"> | null) : null;
-        return {
-          ...p,
-          categoryName: cat?.name || "Oto Elektronik",
-          categorySlug: cat?.slug || "diger",
-        };
-      })
-    );
+    return await Promise.all(items.map((p) => resolveProductImages(ctx, p)));
   },
 });
 
@@ -124,13 +131,7 @@ export const getBySlug = query({
 
     if (!product) return null;
 
-    const cat = product.categoryId ? ((await ctx.db.get(product.categoryId as Id<"categories">)) as Doc<"categories"> | null) : null;
-    return {
-      ...product,
-      categoryName: cat?.name || "Oto Elektronik",
-      categorySlug: cat?.slug || "diger",
-      category: cat ? { _id: cat._id, name: cat.name, slug: cat.slug } : null,
-    };
+    return await resolveProductImages(ctx, product);
   },
 });
 
@@ -144,16 +145,7 @@ export const getByOem = query({
       return pOem.includes(cleanOem) || p.title.toLowerCase().includes(cleanOem);
     });
 
-    return await Promise.all(
-      matched.map(async (p) => {
-        const cat = p.categoryId ? ((await ctx.db.get(p.categoryId as Id<"categories">)) as Doc<"categories"> | null) : null;
-        return {
-          ...p,
-          categoryName: cat?.name || "Oto Elektronik",
-          categorySlug: cat?.slug || "diger",
-        };
-      })
-    );
+    return await Promise.all(matched.map((p) => resolveProductImages(ctx, p)));
   },
 });
 
@@ -188,16 +180,7 @@ export const search = query({
       })
       .slice(0, args.limit ?? 10);
 
-    return await Promise.all(
-      filtered.map(async (p) => {
-        const cat = p.categoryId ? ((await ctx.db.get(p.categoryId as Id<"categories">)) as Doc<"categories"> | null) : null;
-        return {
-          ...p,
-          categoryName: cat?.name || "Oto Elektronik",
-          categorySlug: cat?.slug || "diger",
-        };
-      })
-    );
+    return await Promise.all(filtered.map((p) => resolveProductImages(ctx, p)));
   },
 });
 
@@ -214,6 +197,7 @@ export const create = mutation({
     inStock: v.boolean(),
     description: v.string(),
     images: v.array(v.string()),
+    imageStorageIds: v.optional(v.array(v.id("_storage"))),
     metaTitle: v.optional(v.string()),
     metaDescription: v.optional(v.string()),
     metaKeywords: v.optional(v.string()),
@@ -243,6 +227,7 @@ export const update = mutation({
     inStock: v.boolean(),
     description: v.string(),
     images: v.array(v.string()),
+    imageStorageIds: v.optional(v.array(v.id("_storage"))),
     metaTitle: v.optional(v.string()),
     metaDescription: v.optional(v.string()),
     metaKeywords: v.optional(v.string()),
@@ -270,6 +255,12 @@ export const toggleStock = mutation({
 export const deleteProduct = mutation({
   args: { id: v.id("products") },
   handler: async (ctx, args) => {
+    const product = await ctx.db.get(args.id);
+    if (product && product.imageStorageIds) {
+      for (const storageId of product.imageStorageIds) {
+        await ctx.storage.delete(storageId);
+      }
+    }
     await ctx.db.delete(args.id);
   },
 });
