@@ -1,14 +1,22 @@
 "use client";
 
-import { Suspense, useState, useMemo } from "react";
+import { Suspense, useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   ChevronRight,
-  Home,
-  MessageCircle,
+  ChevronLeft,
+  Filter,
+  RotateCcw,
+  Search,
   Cpu,
-  Eye,
+  X,
+  SlidersHorizontal,
+  Layers,
+  Fuel,
+  Car,
+  Tag,
+  CheckCircle2,
 } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -17,35 +25,54 @@ import ProductCard from "@/components/ProductCard";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { generateWhatsAppLink } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { SearchableCombobox, ComboboxOption } from "@/components/ui/searchable-combobox";
+
+const ITEMS_PER_PAGE = 12;
 
 function ProductCatalogContent() {
   const searchParams = useSearchParams();
-  const categoryParam = searchParams.get("kategori") || "motor-beyinleri-ecu";
+  const categoryParam = searchParams.get("kategori") || "";
   const brandParam = searchParams.get("marka") || "";
   const queryParam = searchParams.get("q") || "";
 
   const [selectedCategory, setSelectedCategory] = useState<string>(categoryParam);
   const [selectedBrand, setSelectedBrand] = useState<string>(brandParam);
+  const [selectedModel, setSelectedModel] = useState<string>("");
   const [selectedCondition, setSelectedCondition] = useState<string>("Tümü");
   const [selectedFuel, setSelectedFuel] = useState<string>("Tümü");
   const [selectedStock, setSelectedStock] = useState<string>("Tümü");
   const [oemSearch, setOemSearch] = useState<string>(queryParam);
   const [activeSearch, setActiveSearch] = useState<string>(queryParam);
+  const [sortBy, setSortBy] = useState<string>("date-desc");
+  const [currentPage, setCurrentPage] = useState<number>(1);
 
-  // Exact 12 categories from Screenshot 2
+  // Sync state if URL query params change
+  useEffect(() => {
+    if (categoryParam) setSelectedCategory(categoryParam);
+    if (brandParam) setSelectedBrand(brandParam);
+    if (queryParam) {
+      setOemSearch(queryParam);
+      setActiveSearch(queryParam);
+    }
+  }, [categoryParam, brandParam, queryParam]);
+
+  // 12 Exact Categories
   const categoryList = [
-    { name: "Motor Beyinleri (ECU)", slug: "motor-beyinleri-ecu" },
-    { name: "ABS / ESP Beyinleri", slug: "abs-esp-beyinleri" },
-    { name: "Airbag Beyinleri", slug: "airbag-beyinleri" },
-    { name: "BCM / BSI Beyinleri", slug: "bcm-bsi-sam-modulleri" },
-    { name: "UCH / SAM Modülleri", slug: "uch-sam-modulleri" },
-    { name: "Sigorta Kutuları", slug: "sigorta-kutulari" },
-    { name: "Gösterge Panelleri", slug: "gosterge-panelleri" },
-    { name: "Direksiyon Kumanda Modülleri", slug: "direksiyon-kumanda-modulleri" },
-    { name: "Klima Kontrol Üniteleri", slug: "klima-kontrol-uniteleri" },
-    { name: "Multimedya Üniteleri", slug: "multimedya-uniteleri" },
-    { name: "Konfor Modülleri", slug: "konfor-modulleri" },
-    { name: "Şanzıman Beyinleri", slug: "sanziman-beyinleri" },
+    { name: "Tüm Kategoriler", slug: "", img: "/images/catalog-ecu-banner.jpg" },
+    { name: "Motor Beyinleri (ECU)", slug: "motor-beyinleri-ecu", img: "/images/cat-ecu.jpg" },
+    { name: "ABS / ESP Beyinleri", slug: "abs-esp-beyinleri", img: "/images/cat-abs.jpg" },
+    { name: "Airbag Beyinleri", slug: "airbag-beyinleri", img: "/images/cat-airbag.jpg" },
+    { name: "BCM / BSI Beyinleri", slug: "bcm-bsi-sam-modulleri", img: "/images/cat-bcm.jpg" },
+    { name: "UCH / SAM Modülleri", slug: "uch-sam-modulleri", img: "/images/cat-uch.jpg" },
+    { name: "Sigorta Kutuları", slug: "sigorta-kutulari", img: "/images/cat-fusebox.jpg" },
+    { name: "Gösterge Panelleri", slug: "gosterge-panelleri", img: "/images/cat-cluster.jpg" },
+    { name: "Direksiyon Kumanda Modülleri", slug: "direksiyon-kumanda-modulleri", img: "/images/cat-steering.jpg" },
+    { name: "Klima Kontrol Üniteleri", slug: "klima-kontrol-uniteleri", img: "/images/cat-climate.jpg" },
+    { name: "Multimedya Üniteleri", slug: "multimedya-uniteleri", img: "/images/cat-multimedia.jpg" },
+    { name: "Konfor Modülleri", slug: "konfor-modulleri", img: "/images/cat-comfort.jpg" },
+    { name: "Şanzıman Beyinleri", slug: "sanziman-beyinleri", img: "/images/cat-transmission.jpg" },
   ];
 
   // Fetch categories from Convex
@@ -53,8 +80,8 @@ function ProductCatalogContent() {
 
   // Fetch products from Convex
   const rawProducts = useQuery(api.products.list, {
-    categorySlug: selectedCategory === "all" ? undefined : selectedCategory,
-    brand: selectedBrand && selectedBrand !== "Tümü" ? selectedBrand : undefined,
+    categorySlug: selectedCategory && selectedCategory !== "" ? selectedCategory : undefined,
+    brand: selectedBrand && selectedBrand !== "Tümü" && selectedBrand !== "" ? selectedBrand : undefined,
     condition: selectedCondition && selectedCondition !== "Tümü" ? selectedCondition : undefined,
     inStockOnly: selectedStock === "Stokta" ? true : undefined,
     searchTerm: activeSearch || undefined,
@@ -62,320 +89,655 @@ function ProductCatalogContent() {
 
   const brands = useQuery(api.brands.list);
   const settings = useQuery(api.siteSettings.get);
-  const whatsappNumber = settings?.whatsappNumber || "+905340653222";
+  const whatsappNumber = settings?.whatsappNumber || "905321234567";
+
+  // Searchable Brand Options
+  const brandOptions: ComboboxOption[] = useMemo(() => {
+    if (!brands) return [];
+    return brands.map((b) => ({
+      value: b.name,
+      label: b.name,
+    }));
+  }, [brands]);
+
+  // Searchable Category Options
+  const categoryOptions: ComboboxOption[] = useMemo(() => {
+    return categoryList
+      .filter((c) => c.slug !== "")
+      .map((c) => ({
+        value: c.slug,
+        label: c.name,
+      }));
+  }, [categoryList]);
+
+  // Dynamically extracted Unique Model Options from products
+  const modelOptions: ComboboxOption[] = useMemo(() => {
+    if (!rawProducts) return [];
+    const set = new Set<string>();
+    rawProducts.forEach((p) => {
+      if (p.model && p.model.trim()) {
+        // Support comma separated models if any
+        p.model.split(/[,/]/).forEach((m) => {
+          const trimmed = m.trim();
+          if (trimmed.length > 1) set.add(trimmed);
+        });
+      }
+    });
+    return Array.from(set)
+      .sort()
+      .map((m) => ({ value: m, label: m }));
+  }, [rawProducts]);
+
+  // Fuel Options
+  const fuelOptions: ComboboxOption[] = [
+    { value: "Dizel", label: "Dizel" },
+    { value: "Benzin", label: "Benzin" },
+    { value: "Hibrit", label: "Hibrit / Elektrik" },
+  ];
+
+  // Filter and Sort in client
+  const processedProducts = useMemo(() => {
+    if (!rawProducts) return [];
+    let list = [...rawProducts];
+
+    // Filter by vehicle model if selected
+    if (selectedModel && selectedModel.trim() !== "") {
+      const modelTerm = selectedModel.toLowerCase();
+      list = list.filter(
+        (p) =>
+          (p.model && p.model.toLowerCase().includes(modelTerm)) ||
+          p.title.toLowerCase().includes(modelTerm)
+      );
+    }
+
+    // Filter by fuel if selected
+    if (selectedFuel && selectedFuel !== "Tümü") {
+      const fuelTerm = selectedFuel.toLowerCase();
+      list = list.filter(
+        (p) =>
+          p.description.toLowerCase().includes(fuelTerm) ||
+          p.title.toLowerCase().includes(fuelTerm) ||
+          p.tags?.some((t) => t.toLowerCase().includes(fuelTerm))
+      );
+    }
+
+    // Sorting
+    switch (sortBy) {
+      case "oem-asc":
+        list.sort((a, b) => a.oemNumber.localeCompare(b.oemNumber));
+        break;
+      case "title-asc":
+        list.sort((a, b) => a.title.localeCompare(b.title, "tr"));
+        break;
+      case "title-desc":
+        list.sort((a, b) => b.title.localeCompare(a.title, "tr"));
+        break;
+      case "date-desc":
+      default:
+        list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        break;
+    }
+
+    return list;
+  }, [rawProducts, selectedModel, selectedFuel, sortBy]);
+
+  // Pagination calculation
+  const totalItems = processedProducts.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / ITEMS_PER_PAGE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+
+  const paginatedProducts = useMemo(() => {
+    const startIndex = (safeCurrentPage - 1) * ITEMS_PER_PAGE;
+    return processedProducts.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [processedProducts, safeCurrentPage]);
 
   const activeCategoryTitle = useMemo(() => {
+    if (!selectedCategory) return "TÜM ÜRÜNLER";
     const found = categoryList.find((c) => c.slug === selectedCategory);
-    return found ? found.name : "MOTOR BEYİNLERİ (ECU)";
+    return found ? found.name.toUpperCase() : "ÜRÜNLER";
   }, [selectedCategory]);
 
-  const handleFilter = (e: React.FormEvent) => {
+  // First product image of the selected category
+  const categoryFirstImage = useMemo(() => {
+    const firstProductWithImage = (rawProducts || []).find(
+      (p) => p.images && p.images.length > 0 && Boolean(p.images[0])
+    );
+    if (firstProductWithImage?.images?.[0]) {
+      return firstProductWithImage.images[0];
+    }
+    const foundCat = categoryList.find((c) => c.slug === selectedCategory);
+    return foundCat?.img || "/images/catalog-ecu-banner.jpg";
+  }, [rawProducts, selectedCategory]);
+
+  const handleFilterSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setActiveSearch(oemSearch);
+    setActiveSearch(oemSearch.trim());
+    setCurrentPage(1);
   };
+
+  const handleResetFilters = () => {
+    setSelectedCategory("");
+    setSelectedBrand("");
+    setSelectedModel("");
+    setSelectedCondition("Tümü");
+    setSelectedFuel("Tümü");
+    setSelectedStock("Tümü");
+    setOemSearch("");
+    setActiveSearch("");
+    setSortBy("date-desc");
+    setCurrentPage(1);
+  };
+
+  const hasActiveFilters = Boolean(
+    selectedCategory ||
+    selectedBrand ||
+    selectedModel ||
+    selectedCondition !== "Tümü" ||
+    selectedFuel !== "Tümü" ||
+    selectedStock !== "Tümü" ||
+    activeSearch
+  );
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
       <Header />
 
-      {/* 1. Breadcrumbs matching Screenshot 2 */}
+      {/* 1. Breadcrumbs */}
       <div className="bg-white border-b border-slate-200 py-3 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto flex items-center gap-2 text-xs text-slate-500">
-          <Link href="/" className="hover:text-blue-600">Ana Sayfa</Link>
+          <Link href="/" className="hover:text-blue-600 transition-colors">Ana Sayfa</Link>
           <ChevronRight className="w-3 h-3 text-slate-400" />
-          <Link href="/urunler" className="hover:text-blue-600">Ürünler</Link>
-          <ChevronRight className="w-3 h-3 text-slate-400" />
-          <span className="text-slate-900 font-semibold">{activeCategoryTitle}</span>
+          <Link href="/urunler" onClick={handleResetFilters} className="hover:text-blue-600 transition-colors">Ürünler</Link>
+          {selectedCategory && (
+            <>
+              <ChevronRight className="w-3 h-3 text-slate-400" />
+              <span className="text-slate-900 font-semibold">{activeCategoryTitle}</span>
+            </>
+          )}
         </div>
       </div>
 
-      {/* 2. Category Header Banner matching Screenshot 2 */}
-      <div className="bg-white border-b border-slate-200 py-8 px-4 sm:px-6 lg:px-8">
+      {/* 2. Category Header Banner */}
+      <div className="bg-white border-b border-slate-200 py-6 sm:py-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="space-y-2 text-center md:text-left">
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight">
-              {activeCategoryTitle}
-            </h1>
+            <div className="flex items-center justify-center md:justify-start gap-2">
+              <h1 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight">
+                {activeCategoryTitle}
+              </h1>
+              <Badge variant="secondary" className="font-mono text-xs">
+                {totalItems} Ürün
+              </Badge>
+            </div>
             <p className="text-xs sm:text-sm text-slate-500 max-w-2xl leading-relaxed">
-              Farklı marka ve modellere uygun çıkma ve sıfır motor beyinleri. Binlerce stoklu ürün, uygun fiyat ve garantili hizmet.
+              Orijinal çıkma ve sıfır oto elektronik modülleri. Test edilmiş, garantili ve stoktan aynı gün hızlı kargo imkanı.
             </p>
           </div>
 
-          <div className="w-48 h-28 rounded-xl bg-slate-50 border border-slate-200 p-2 flex items-center justify-center shrink-0">
+          {/* Dynamic First Product Image for Category */}
+          <div className="w-36 sm:w-44 h-24 sm:h-28 rounded-xl bg-slate-50 border border-slate-200 p-2 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs group">
             <img
-              src="/images/catalog-ecu-banner.jpg"
-              alt="ECU"
-              className="w-full h-full object-contain"
+              src={categoryFirstImage}
+              alt={activeCategoryTitle}
+              className="w-full h-full object-contain rounded-lg group-hover:scale-105 transition-all duration-300"
             />
           </div>
         </div>
       </div>
 
-      {/* 3. Top Filter Form Bar matching Screenshot 2 */}
-      <div className="bg-slate-100 border-b border-slate-200 py-4 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <form onSubmit={handleFilter} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-            <div>
-              <label className="text-[10px] font-extrabold uppercase text-slate-500 block mb-1">
-                OEM / BOSCH NO
-              </label>
-              <input
-                type="text"
-                placeholder="OEM veya Bosch No"
-                value={oemSearch}
-                onChange={(e) => setOemSearch(e.target.value)}
-                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-mono uppercase focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="text-[10px] font-extrabold uppercase text-slate-500 block mb-1">
-                MARKA
-              </label>
-              <select
-                value={selectedBrand}
-                onChange={(e) => setSelectedBrand(e.target.value)}
-                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              >
-                <option value="">Tümü</option>
-                {brands?.map((b) => (
-                  <option key={b._id} value={b.name}>{b.name}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="text-[10px] font-extrabold uppercase text-slate-500 block mb-1">
-                ARAÇ MODELİ
-              </label>
-              <select className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500">
-                <option value="">Tümü</option>
-                <option value="Passat">Passat</option>
-                <option value="Golf">Golf</option>
-                <option value="Focus">Focus</option>
-                <option value="Megane">Megane</option>
-                <option value="A4">A4</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="text-[10px] font-extrabold uppercase text-slate-500 block mb-1">
-                YIL
-              </label>
-              <select className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500">
-                <option value="">Tümü</option>
-                <option value="2020-2024">2020 - 2024</option>
-                <option value="2015-2019">2015 - 2019</option>
-                <option value="2010-2014">2010 - 2014</option>
-                <option value="2005-2009">2005 - 2009</option>
-              </select>
-            </div>
-
-            <div className="flex items-end">
-              <button
-                type="submit"
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs py-2.5 rounded-lg transition-colors cursor-pointer"
-              >
-                FİLTRELE
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-
-      {/* 4. Main Body Layout (Sidebar + 3-Col Grid) matching Screenshot 2 */}
+      {/* 3. Main Body Layout (Unified Sticky Sidebar + Product Grid) */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* Left Sidebar */}
-          <aside className="lg:col-span-3 space-y-6">
-            {/* KATEGORİLER */}
-            <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs">
-              <h3 className="font-black text-xs uppercase tracking-wider text-slate-900 mb-3 pb-2 border-b border-slate-100">
-                KATEGORİLER
-              </h3>
-              <ul className="space-y-1 text-xs">
-                {(categories && categories.length > 0 ? categories : categoryList).map((cat: any) => {
-                  const isActive = selectedCategory === cat.slug;
-                  return (
-                    <li key={cat.slug}>
-                      <button
-                        onClick={() => setSelectedCategory(cat.slug)}
-                        className={`w-full text-left py-1.5 px-2 rounded-lg transition-colors cursor-pointer flex items-center justify-between ${
-                          isActive
-                            ? "text-blue-600 font-bold bg-blue-50/80"
-                            : "text-slate-600 hover:text-slate-900"
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* Left Sticky Sidebar containing Filters & WhatsApp Card */}
+          <aside className="lg:col-span-3 space-y-5 lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto lg:pr-1">
+            {/* 1. DETAYLI FİLTRELER */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-4 text-xs">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                <h3 className="font-black text-xs uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-blue-600" />
+                  <span>FİLTRELER</span>
+                </h3>
+                {hasActiveFilters && (
+                  <button
+                    onClick={handleResetFilters}
+                    className="text-[10px] text-slate-500 hover:text-red-600 font-semibold transition-colors flex items-center gap-1 cursor-pointer"
+                  >
+                    <RotateCcw className="w-2.5 h-2.5" />
+                    <span>Sıfırla</span>
+                  </button>
+                )}
+              </div>
+
+              {/* KATEGORİ (Tekil Aranabilir Combobox) */}
+              <div className="space-y-1.5">
+                <label className="font-bold text-slate-700 block uppercase text-[10px] tracking-wider flex items-center justify-between">
+                  <span className="flex items-center gap-1">
+                    <Layers className="w-3 h-3 text-slate-400" />
+                    KATEGORİ
+                  </span>
+                  {selectedCategory && (
+                    <button
+                      onClick={() => {
+                        setSelectedCategory("");
+                        setCurrentPage(1);
+                      }}
+                      className="text-[10px] text-blue-600 font-semibold hover:underline cursor-pointer"
+                    >
+                      Tümü
+                    </button>
+                  )}
+                </label>
+                <SearchableCombobox
+                  options={categoryOptions}
+                  value={selectedCategory}
+                  onChange={(val) => {
+                    setSelectedCategory(val);
+                    setCurrentPage(1);
+                  }}
+                  placeholder="Tüm Kategoriler..."
+                  searchPlaceholder="Kategori ara (ECU, ABS, Airbag...)"
+                  allOptionLabel="Tüm Kategoriler"
+                />
+              </div>
+
+              {/* ARAÇ MARKASI (Searchable Combobox) */}
+              <div className="space-y-1.5">
+                <label className="font-bold text-slate-700 block uppercase text-[10px] tracking-wider flex items-center justify-between">
+                  <span className="flex items-center gap-1">
+                    <Car className="w-3 h-3 text-slate-400" />
+                    ARAÇ MARKASI
+                  </span>
+                  {selectedBrand && (
+                    <button
+                      onClick={() => {
+                        setSelectedBrand("");
+                        setCurrentPage(1);
+                      }}
+                      className="text-[10px] text-blue-600 font-semibold hover:underline cursor-pointer"
+                    >
+                      Tümü
+                    </button>
+                  )}
+                </label>
+                <SearchableCombobox
+                  options={brandOptions}
+                  value={selectedBrand}
+                  onChange={(val) => {
+                    setSelectedBrand(val);
+                    setCurrentPage(1);
+                  }}
+                  placeholder="Tüm Markalar..."
+                  searchPlaceholder="Marka ara (BMW, Audi, Mercedes...)"
+                  allOptionLabel="Tüm Markalar"
+                />
+              </div>
+
+              {/* ARAÇ MODELİ (Searchable Combobox) */}
+              <div className="space-y-1.5">
+                <label className="font-bold text-slate-700 block uppercase text-[10px] tracking-wider flex items-center justify-between">
+                  <span>ARAÇ MODELİ</span>
+                  {selectedModel && (
+                    <button
+                      onClick={() => {
+                        setSelectedModel("");
+                        setCurrentPage(1);
+                      }}
+                      className="text-[10px] text-blue-600 font-semibold hover:underline cursor-pointer"
+                    >
+                      Tümü
+                    </button>
+                  )}
+                </label>
+                {modelOptions.length > 0 ? (
+                  <SearchableCombobox
+                    options={modelOptions}
+                    value={selectedModel}
+                    onChange={(val) => {
+                      setSelectedModel(val);
+                      setCurrentPage(1);
+                    }}
+                    placeholder="Tüm Modeller..."
+                    searchPlaceholder="Model ara (Passat, Focus, Golf...)"
+                    allOptionLabel="Tüm Modeller"
+                  />
+                ) : (
+                  <input
+                    type="text"
+                    placeholder="Örn: Passat, Focus, Golf..."
+                    value={selectedModel}
+                    onChange={(e) => {
+                      setSelectedModel(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                )}
+              </div>
+
+              {/* DURUM (Sıfır / Çıkma / Tümü) */}
+              <div className="space-y-1.5">
+                <label className="font-bold text-slate-700 block uppercase text-[10px] tracking-wider">
+                  ÜRÜN DURUMU
+                </label>
+                <div className="grid grid-cols-3 gap-1">
+                  {["Tümü", "Sıfır", "Çıkma"].map((c) => {
+                    const isActive = selectedCondition === c;
+                    return (
+                      <Button
+                        key={c}
+                        type="button"
+                        variant={isActive ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => {
+                          setSelectedCondition(c);
+                          setCurrentPage(1);
+                        }}
+                        className={`h-8 text-xs font-semibold ${
+                          isActive ? "shadow-sm" : "bg-slate-50 hover:bg-slate-100"
                         }`}
                       >
-                        <span>{cat.name}</span>
-                        {cat.itemCount && (
-                          <span className="text-[10px] text-slate-400 font-mono">
-                            ({cat.itemCount})
-                          </span>
-                        )}
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-
-            {/* FİLTRELER */}
-            <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs space-y-4 text-xs">
-              <h3 className="font-black text-xs uppercase tracking-wider text-slate-900 pb-2 border-b border-slate-100">
-                FİLTRELER
-              </h3>
-
-              {/* DURUM Checkbox */}
-              <div>
-                <label className="font-bold text-slate-700 block mb-1.5 uppercase text-[10px]">
-                  DURUM
-                </label>
-                <div className="space-y-1 text-slate-600">
-                  {["Tümü", "Sıfır", "Çıkma"].map((c) => (
-                    <label key={c} className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="condition"
-                        checked={selectedCondition === c}
-                        onChange={() => setSelectedCondition(c)}
-                        className="text-blue-600"
-                      />
-                      <span>{c}</span>
-                    </label>
-                  ))}
+                        {c}
+                      </Button>
+                    );
+                  })}
                 </div>
               </div>
 
-              {/* ARAÇ MARKASI */}
-              <div>
-                <label className="font-bold text-slate-700 block mb-1 uppercase text-[10px]">
-                  ARAÇ MARKASI
-                </label>
-                <select
-                  value={selectedBrand}
-                  onChange={(e) => setSelectedBrand(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs"
-                >
-                  <option value="">Tümü</option>
-                  {brands?.map((b) => (
-                    <option key={b._id} value={b.name}>{b.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* YAKIT TİPİ */}
-              <div>
-                <label className="font-bold text-slate-700 block mb-1 uppercase text-[10px]">
+              {/* YAKIT TİPİ (Searchable Combobox) */}
+              <div className="space-y-1.5">
+                <label className="font-bold text-slate-700 block uppercase text-[10px] tracking-wider flex items-center gap-1">
+                  <Fuel className="w-3 h-3 text-slate-400" />
                   YAKIT TİPİ
                 </label>
-                <select
+                <SearchableCombobox
+                  options={fuelOptions}
                   value={selectedFuel}
-                  onChange={(e) => setSelectedFuel(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs"
-                >
-                  <option value="Tümü">Tümü</option>
-                  <option value="Dizel">Dizel</option>
-                  <option value="Benzin">Benzin</option>
-                  <option value="Hibrit">Hibrit</option>
-                </select>
+                  onChange={(val) => {
+                    setSelectedFuel(val);
+                    setCurrentPage(1);
+                  }}
+                  placeholder="Tüm Yakıt Tipleri..."
+                  searchPlaceholder="Yakıt tipi ara..."
+                  allOptionLabel="Tümü (Dizel / Benzin / Hibrit)"
+                />
               </div>
 
-              {/* STOK DURUMU */}
-              <div>
-                <label className="font-bold text-slate-700 block mb-1 uppercase text-[10px]">
+              {/* STOK DURUMU (Combobox) */}
+              <div className="space-y-1.5">
+                <label className="font-bold text-slate-700 block uppercase text-[10px] tracking-wider flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-slate-400" />
                   STOK DURUMU
                 </label>
-                <select
-                  value={selectedStock}
-                  onChange={(e) => setSelectedStock(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs"
-                >
-                  <option value="Tümü">Tümü</option>
-                  <option value="Stokta">Sadece Stoktakiler</option>
-                </select>
+                <SearchableCombobox
+                  options={[
+                    { value: "Stokta", label: "Sadece Hazır Stoktakiler" },
+                  ]}
+                  value={selectedStock === "Stokta" ? "Stokta" : ""}
+                  onChange={(val) => {
+                    setSelectedStock(val || "Tümü");
+                    setCurrentPage(1);
+                  }}
+                  placeholder="Tüm Stok Durumları..."
+                  allOptionLabel="Tüm Stok Durumları"
+                  searchPlaceholder="Stok durumu ara..."
+                />
               </div>
+
+              {/* Filtreleri Temizle Button */}
+              {hasActiveFilters && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleResetFilters}
+                  className="w-full font-bold text-xs hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors"
+                >
+                  <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                  <span>Filtreleri Temizle</span>
+                </Button>
+              )}
             </div>
 
-            {/* OEM NO İLE BULAMADINIZ MI? Card matching Screenshot 2 */}
+
+            {/* OEM NO İLE BULAMADINIZ MI? WhatsApp Card */}
             <div className="rounded-2xl bg-gradient-to-br from-blue-900 to-slate-900 text-white p-5 space-y-3 shadow-md">
               <h4 className="font-black text-xs uppercase tracking-wider text-white">
                 OEM NO İLE BULAMADINIZ MI?
               </h4>
               <p className="text-[11px] text-slate-300 leading-relaxed">
-                Aradığınız ürünü bulamadıysanız WhatsApp üzerinden bize sorabilirsiniz.
+                Aradığınız parça kodunu bulamadıysanız veya uyumluluk teyidi için WhatsApp destek hattımıza doğrudan sorabilirsiniz.
               </p>
               <a
-                href={generateWhatsAppLink(whatsappNumber)}
+                href={generateWhatsAppLink(whatsappNumber, undefined, undefined, "Merhaba TMS İthalat, aradığım oto elektronik parçayı web sitenizde bulamadım, yardımcı olabilir misiniz?")}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="block pt-1"
               >
-                <button className="w-full py-2 bg-transparent border border-white/40 hover:bg-white hover:text-slate-900 text-white text-xs font-extrabold rounded-lg transition-colors cursor-pointer">
-                  BİZE ULAŞIN
-                </button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="w-full bg-white hover:bg-slate-100 text-slate-900 font-extrabold text-xs shadow-sm"
+                >
+                  WHATSAPP İLE SORUN
+                </Button>
               </a>
             </div>
           </aside>
 
-          {/* Right Product Grid (3 Columns) matching Screenshot 2 */}
-          <main className="lg:col-span-9 space-y-6">
-            {/* Top Bar */}
-            <div className="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-200 text-xs">
-              <span className="font-medium text-slate-600">
-                Toplam <strong className="text-slate-900">{rawProducts ? rawProducts.length : 0}</strong> ürün bulundu
-              </span>
+          {/* Right Product Grid (3 Columns) */}
+          <main className="lg:col-span-9 space-y-5">
+            {/* Top Results, Search & Sorting Bar */}
+            <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 text-xs shadow-2xs space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                {/* 1. OEM & PARÇA ARAMA Form */}
+                <form onSubmit={handleFilterSubmit} className="flex-1 max-w-lg flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      placeholder="OEM, Bosch No veya Parça Ara..."
+                      value={oemSearch}
+                      onChange={(e) => setOemSearch(e.target.value)}
+                      className="w-full bg-slate-50 hover:bg-slate-100/60 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-mono uppercase focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all pr-7"
+                    />
+                    {oemSearch && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOemSearch("");
+                          setActiveSearch("");
+                          setCurrentPage(1);
+                        }}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 text-xs cursor-pointer"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                  <Button
+                    type="submit"
+                    variant="default"
+                    size="sm"
+                    className="h-9 px-4 font-bold text-xs rounded-xl shadow-xs shrink-0"
+                  >
+                    <Search className="w-3.5 h-3.5 mr-1" />
+                    <span>Ara</span>
+                  </Button>
+                </form>
 
-              <div className="flex items-center gap-2">
-                <span className="text-slate-400">SIRALAMA:</span>
-                <select className="bg-slate-50 border border-slate-200 rounded-md px-2 py-1 text-slate-700 font-semibold focus:outline-none">
-                  <option>Güncelleme Tarihi ▾</option>
-                  <option>Ürün Adı (A-Z)</option>
-                  <option>Ürün Adı (Z-A)</option>
-                </select>
+                {/* 2. Right: Working Sort Dropdown */}
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-slate-400 font-semibold text-[11px]">SIRALAMA:</span>
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer text-xs"
+                  >
+                    <option value="date-desc">En Yeniler ▾</option>
+                    <option value="oem-asc">OEM / Parça No (A-Z)</option>
+                    <option value="title-asc">Ürün Adı (A-Z)</option>
+                    <option value="title-desc">Ürün Adı (Z-A)</option>
+                  </select>
+                </div>
               </div>
+
+              {/* Active Filter Chips/Badges Strip */}
+              {hasActiveFilters && (
+                <div className="flex items-center gap-1.5 flex-wrap pt-2 border-t border-slate-100">
+                  <span className="text-[11px] text-slate-400 font-semibold mr-1">Aktif Filtreler:</span>
+                  
+                  {selectedCategory && (
+                    <Badge variant="info" className="gap-1 py-0.5 px-2 text-[11px] cursor-pointer" onClick={() => setSelectedCategory("")}>
+                      <span>{categoryList.find(c => c.slug === selectedCategory)?.name || selectedCategory}</span>
+                      <X className="w-3 h-3 hover:text-blue-900" />
+                    </Badge>
+                  )}
+
+                  {selectedBrand && (
+                    <Badge variant="info" className="gap-1 py-0.5 px-2 text-[11px] cursor-pointer" onClick={() => setSelectedBrand("")}>
+                      <span>Marka: {selectedBrand}</span>
+                      <X className="w-3 h-3 hover:text-blue-900" />
+                    </Badge>
+                  )}
+
+                  {selectedModel && (
+                    <Badge variant="info" className="gap-1 py-0.5 px-2 text-[11px] cursor-pointer" onClick={() => setSelectedModel("")}>
+                      <span>Model: {selectedModel}</span>
+                      <X className="w-3 h-3 hover:text-blue-900" />
+                    </Badge>
+                  )}
+
+                  {selectedCondition !== "Tümü" && (
+                    <Badge variant="info" className="gap-1 py-0.5 px-2 text-[11px] cursor-pointer" onClick={() => setSelectedCondition("Tümü")}>
+                      <span>Durum: {selectedCondition}</span>
+                      <X className="w-3 h-3 hover:text-blue-900" />
+                    </Badge>
+                  )}
+
+                  {selectedFuel !== "Tümü" && (
+                    <Badge variant="info" className="gap-1 py-0.5 px-2 text-[11px] cursor-pointer" onClick={() => setSelectedFuel("Tümü")}>
+                      <span>Yakıt: {selectedFuel}</span>
+                      <X className="w-3 h-3 hover:text-blue-900" />
+                    </Badge>
+                  )}
+
+                  {selectedStock !== "Tümü" && (
+                    <Badge variant="info" className="gap-1 py-0.5 px-2 text-[11px] cursor-pointer" onClick={() => setSelectedStock("Tümü")}>
+                      <span>Stok: {selectedStock}</span>
+                      <X className="w-3 h-3 hover:text-blue-900" />
+                    </Badge>
+                  )}
+
+                  {activeSearch && (
+                    <Badge variant="info" className="gap-1 py-0.5 px-2 text-[11px] cursor-pointer" onClick={() => { setActiveSearch(""); setOemSearch(""); }}>
+                      <span>Arama: &quot;{activeSearch}&quot;</span>
+                      <X className="w-3 h-3 hover:text-blue-900" />
+                    </Badge>
+                  )}
+
+                  <button
+                    onClick={handleResetFilters}
+                    className="text-[11px] text-red-600 hover:underline font-bold ml-1 cursor-pointer"
+                  >
+                    Tümünü Temizle
+                  </button>
+                </div>
+              )}
             </div>
 
-            {/* 3-Col Product Grid matching Screenshot 2 */}
-            {rawProducts && rawProducts.length > 0 ? (
+            {/* 3-Col Product Grid */}
+            {paginatedProducts && paginatedProducts.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                {rawProducts.map((p) => (
-                  <ProductCard key={p._id} product={p as any} />
+                {paginatedProducts.map((p) => (
+                  <ProductCard key={p._id} product={p} />
                 ))}
               </div>
             ) : (
-              <div className="bg-white rounded-xl border border-slate-200 p-12 text-center text-slate-500 text-xs">
-                Seçilen kriterlere uygun ürün bulunamadı.
+              <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center space-y-4 shadow-xs">
+                <Cpu className="w-12 h-12 text-slate-300 mx-auto" />
+                <div className="space-y-1">
+                  <h4 className="font-bold text-sm text-slate-900">Kriterlere Uygun Ürün Bulunamadı</h4>
+                  <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                    Aradığınız OEM numarası veya filtre kriterleriyle eşleşen ürün bulunamadı. Filtreleri temizleyebilir veya bize WhatsApp üzerinden sorabilirsiniz.
+                  </p>
+                </div>
+                {hasActiveFilters && (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={handleResetFilters}
+                    className="px-5 py-2 font-bold text-xs"
+                  >
+                    Filtreleri Temizle
+                  </Button>
+                )}
               </div>
             )}
 
-            {/* Pagination matching Screenshot 2 */}
-            <div className="flex items-center justify-center gap-1.5 pt-6 text-xs font-bold">
-              <button className="w-8 h-8 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 flex items-center justify-center">
-                &lt;
-              </button>
-              <button className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center">
-                1
-              </button>
-              <button className="w-8 h-8 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 flex items-center justify-center">
-                2
-              </button>
-              <button className="w-8 h-8 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 flex items-center justify-center">
-                3
-              </button>
-              <button className="w-8 h-8 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 flex items-center justify-center">
-                4
-              </button>
-              <button className="w-8 h-8 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 flex items-center justify-center">
-                5
-              </button>
-              <span className="px-1 text-slate-400">...</span>
-              <button className="w-8 h-8 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 flex items-center justify-center">
-                18
-              </button>
-              <button className="w-8 h-8 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 flex items-center justify-center">
-                &gt;
-              </button>
-            </div>
+            {/* Functional Real Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-2 pt-6 text-xs font-bold">
+                {/* Previous Page Button */}
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                  disabled={safeCurrentPage === 1}
+                  className="w-9 h-9 rounded-xl"
+                  aria-label="Önceki Sayfa"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+
+                {/* Page Number Buttons */}
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
+                  if (
+                    totalPages > 7 &&
+                    pageNum !== 1 &&
+                    pageNum !== totalPages &&
+                    Math.abs(pageNum - safeCurrentPage) > 2
+                  ) {
+                    if (
+                      pageNum === safeCurrentPage - 3 ||
+                      pageNum === safeCurrentPage + 3
+                    ) {
+                      return (
+                        <span key={pageNum} className="px-1 text-slate-400">
+                          ...
+                        </span>
+                      );
+                    }
+                    return null;
+                  }
+
+                  const isCurrent = pageNum === safeCurrentPage;
+                  return (
+                    <Button
+                      key={pageNum}
+                      variant={isCurrent ? "default" : "outline"}
+                      size="icon"
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`w-9 h-9 rounded-xl font-bold transition-all ${
+                        isCurrent ? "shadow-sm shadow-blue-600/30" : "bg-white"
+                      }`}
+                    >
+                      {pageNum}
+                    </Button>
+                  );
+                })}
+
+                {/* Next Page Button */}
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                  disabled={safeCurrentPage === totalPages}
+                  className="w-9 h-9 rounded-xl"
+                  aria-label="Sonraki Sayfa"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
           </main>
         </div>
       </div>

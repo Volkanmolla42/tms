@@ -47,7 +47,7 @@ export default function KurumsalPage() {
             <span className="text-blue-400">Oto Elektronik Güvencesi</span>
           </h1>
           <p className="text-sm sm:text-base text-slate-300 max-w-2xl mx-auto leading-relaxed">
-            Türkiye&apos;nin dört bir yanındaki oto servislerine, ustalara ve araç sahiplerine orijinal, test edilmiş oto elektronik modülleri ve motor beyinleri tedarik ediyoruz.
+            Türkiye&apos;nin dört bir yanındaki oto servislerine, ustalara ve araç sahiplerine orijinal oto elektronik modülleri ve motor beyinleri tedarik ediyoruz.
           </p>
         </div>
       </section>
@@ -64,7 +64,7 @@ export default function KurumsalPage() {
               <strong>TMS İthalat</strong>, otomotiv elektronik sektöründe 20 yılı aşkın tecrübesiyle motor kontrol üniteleri (ECU), ABS/ESP fren modülleri, Airbag güvenlik beyinleri, BCM/BSI gövde modülleri ve şanzıman mekatronik beyinleri tedariğinde Türkiye&apos;nin öncü kuruluşlarındandır.
             </p>
             <p className="text-sm text-slate-600 leading-relaxed">
-              Konya merkezli depomuzda yer alan 15.000&apos;in üzerinde test edilmiş hazır stok ile arızalı veya hasarlı araçların en kısa sürede orijinal parçalarına kavuşmasını sağlıyoruz.
+              Geniş merkez depomuzda yer alan 15.000&apos;in üzerinde hazır stok ile arızalı veya hasarlı araçların en kısa sürede orijinal parçalarına kavuşmasını sağlıyoruz.
             </p>
             <div className="pt-2 flex flex-wrap gap-2 text-xs">
               <span className="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-800 font-bold border border-blue-100 flex items-center gap-1.5">
@@ -73,7 +73,7 @@ export default function KurumsalPage() {
               </span>
               <span className="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-800 font-bold border border-emerald-100 flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                %100 Test ve Garanti
+                Orijinal ve Garantili
               </span>
             </div>
           </div>
@@ -81,7 +81,7 @@ export default function KurumsalPage() {
           <div className="rounded-3xl bg-slate-900 p-3 shadow-xl border border-slate-800">
             <img
               src="https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&q=80&w=800"
-              alt="Oto Elektronik Laboratuvarı"
+              alt="Oto Elektronik Merkezi"
               className="w-full h-72 object-cover rounded-2xl"
             />
           </div>
@@ -95,7 +95,7 @@ export default function KurumsalPage() {
             </div>
             <h3 className="text-xl font-bold text-slate-900">Misyonumuz</h3>
             <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-              Otomotiv sektöründe artan elektronik karmaşıklığa karşın, müşterilerimize en doğru OEM kodlu parçayı en hızlı ve ekonomik şekilde ulaştırmak; test garantisiyle araçların güvenle yola devam etmesini sağlamaktır.
+              Otomotiv sektöründe artan elektronik karmaşıklığa karşın, müşterilerimize en doğru OEM kodlu parçayı en hızlı ve ekonomik şekilde ulaştırmak; araçların güvenle yola devam etmesini sağlamaktır.
             </p>
           </div>
 
@@ -105,7 +105,7 @@ export default function KurumsalPage() {
             </div>
             <h3 className="text-xl font-bold text-slate-900">Vizyonumuz</h3>
             <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-              Genişleyen ürün portföyü ve son teknoloji test simülatörlerimiz ile Türkiye ve çevre ülkelerde oto elektronik ve mekatronik parçalar alanında 1 numaralı referans merkezi olmak.
+              Genişleyen ürün portföyü ve uzman kadromuz ile Türkiye ve çevre ülkelerde oto elektronik ve mekatronik parçalar alanında 1 numaralı referans merkezi olmak.
             </p>
           </div>
         </div>
@@ -114,31 +114,31 @@ export default function KurumsalPage() {
         <div id="kalite" className="p-8 sm:p-10 rounded-3xl bg-slate-900 text-white space-y-6">
           <div className="space-y-2">
             <span className="text-xs font-mono uppercase tracking-widest text-blue-400">
-              GÜVEN & STANDART
+              GÜVEN & KALİTE
             </span>
-            <h3 className="text-2xl font-black">Kalite ve Test Standartlarımız</h3>
+            <h3 className="text-2xl font-black">Hizmet ve Kalite Standartlarımız</h3>
             <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
-              Depomuza giren her elektronik modül, uzman mühendis ve teknisyenlerimiz tarafından simülatör tezgahlarında test edilir:
+              Müşterilerimize sunduğumuz her üründe en yüksek standartları ve memnuniyeti hedefliyoruz:
             </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
             <div className="p-4 rounded-xl bg-slate-800/80 border border-slate-700 space-y-1.5">
-              <h5 className="font-bold text-white text-sm">1. Giriş Kontrolü</h5>
+              <h5 className="font-bold text-white text-sm">1. Orijinal Ürün Kontrolü</h5>
               <p className="text-slate-400">
-                Fiziksel pinler, anakart komponentleri ve soket yuvaları mikroskop altında incelenir.
+                Tüm parçaların OEM kodları, etiket ve fiziksel bütünlükleri detaylıca kontrol edilir.
               </p>
             </div>
             <div className="p-4 rounded-xl bg-slate-800/80 border border-slate-700 space-y-1.5">
-              <h5 className="font-bold text-white text-sm">2. Simülatör Testi</h5>
+              <h5 className="font-bold text-white text-sm">2. Doğru Parça Eşleştirme</h5>
               <p className="text-slate-400">
-                Araç sinyalleri verilerek enjektör, ateşleme ve sensör çıkışları canlı test edilir.
+                Şase numarası ve parça kodu uyumluluğu uzman ekibimiz tarafından teyit edilir.
               </p>
             </div>
             <div className="p-4 rounded-xl bg-slate-800/80 border border-slate-700 space-y-1.5">
               <h5 className="font-bold text-white text-sm">3. Güvenli Paketleme</h5>
               <p className="text-slate-400">
-                Antistatik koruyucu kılıflar ve darbe emici özel kutularla aynı gün kargolanır.
+                Antistatik koruyucu ambalajlar ve darbe emici özel kutularla aynı gün kargolanır.
               </p>
             </div>
           </div>

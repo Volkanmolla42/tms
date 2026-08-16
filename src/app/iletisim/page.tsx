@@ -20,7 +20,7 @@ import { Textarea } from "@/components/ui/textarea";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import FloatingWhatsApp from "@/components/FloatingWhatsApp";
-import { useMutation, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { generateWhatsAppLink } from "@/lib/utils";
 
@@ -33,39 +33,29 @@ export default function IletisimPage() {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const createInquiry = useMutation(api.inquiries.create);
   const settings = useQuery(api.siteSettings.get);
 
   const whatsappNumber = settings?.whatsappNumber || "+905340653222";
-  const displayPhone = settings?.phone || "+90 534 065 32 22";
+  const displayPhone = settings?.phone || "(0212) 861 32 72";
   const displayEmail = settings?.email || "info@tmsithalat.com";
-  const displayAddress = settings?.address || "Fevzipaşa Mh. 10121 Sk. No: 2 Karatay / KONYA";
+  const displayAddress = settings?.address || "Hürriyet, İstiklal Cd. No:102, 34537 Büyükçekmece/İstanbul";
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !phone) return;
     setLoading(true);
 
-    try {
-      await createInquiry({
-        name,
-        phone,
-        email,
-        message: `Konu: ${subject}. Mesaj: ${message}`,
-        type: "contact_form",
-      });
+    const fullMsg = `İletişim Formu Talebi:\nAd Soyad: ${name}\nTelefon: ${phone}\nE-posta: ${email || "-"}\nKonu: ${subject || "-"}\nMesaj: ${message}`;
+    const url = generateWhatsAppLink(whatsappNumber, undefined, undefined, fullMsg);
+    window.open(url, "_blank");
 
-      setSubmitted(true);
-      setName("");
-      setPhone("");
-      setEmail("");
-      setSubject("");
-      setMessage("");
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+    setSubmitted(true);
+    setName("");
+    setPhone("");
+    setEmail("");
+    setSubject("");
+    setMessage("");
+    setLoading(false);
   };
 
   return (

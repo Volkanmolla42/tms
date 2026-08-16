@@ -27,14 +27,6 @@ export default function HomePage() {
   const [searchInput, setSearchInput] = useState("");
 
   const categories = useQuery(api.categories.list, {});
-  const settings = useQuery(api.siteSettings.get);
-  const seedAll = useMutation(api.seed.seedAll);
-
-  useEffect(() => {
-    if (categories && categories.length === 0) {
-      seedAll().catch(console.error);
-    }
-  }, [categories, seedAll]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,13 +35,6 @@ export default function HomePage() {
     }
   };
 
-  const popularSearches = [
-    "0281011234",
-    "0281002411",
-    "5WK96812",
-    "04L907309B",
-    "04E907309C",
-  ];
 
   // 12 Exact Categories from Screenshot 1 with custom generated studio photos
   const defaultCategories = [
@@ -86,52 +71,63 @@ export default function HomePage() {
     <div className="min-h-screen flex flex-col bg-white">
       <Header />
 
-      {/* 1. HERO SECTION matching Screenshot 1 */}
-      <section className="relative w-full hero-circuit-bg text-white py-16 sm:py-20 lg:py-24 overflow-hidden border-b border-slate-900">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-            {/* Left Content */}
-            <div className="lg:col-span-6 space-y-6 text-center lg:text-left">
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white leading-tight">
+      {/* 1. HERO SECTION with full 16:9 background image */}
+      <section className="relative w-full text-white pt-14 pb-16 sm:pt-20 sm:pb-20 lg:pt-24 lg:pb-24 overflow-hidden border-b border-slate-900 bg-[#090e17]">
+        {/* Background Image Container */}
+        <div className="absolute inset-0 z-0 pointer-events-none">
+          <img
+            src="/images/hero-bg.jpg"
+            alt="TMS Oto Elektronik"
+            className="w-full h-full object-cover object-right md:object-right lg:object-center select-none"
+          />
+          {/* Natural soft shadow on left for maximum text readability while keeping full authenticity */}
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-950/80 via-slate-950/40 to-transparent lg:w-3/5" />
+          <div className="absolute inset-0 bg-black/15" />
+        </div>
+
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center min-h-[340px] sm:min-h-[380px]">
+            {/* Left Content (Text placed over the background from code) */}
+            <div className="lg:col-span-7 xl:col-span-6 space-y-6 text-left py-2 sm:py-4">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-950/70 border border-blue-500/30 text-blue-300 text-xs font-bold uppercase tracking-wider backdrop-blur-md shadow-md">
+                <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+                Orijinal ve Garantili Elektronik Modüller
+              </div>
+
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white leading-[1.12] drop-shadow-[0_2px_12px_rgba(0,0,0,0.8)]">
                 Türkiye&apos;nin<br />
-                Oto Elektronik<br />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-sky-300 to-cyan-300">
+                  Oto Elektronik
+                </span><br />
                 Parça Merkezi
               </h1>
 
-              <p className="text-base sm:text-lg text-slate-300 max-w-lg leading-relaxed">
+              <p className="text-base sm:text-lg text-slate-200 max-w-lg leading-relaxed font-normal drop-shadow-[0_1px_6px_rgba(0,0,0,0.8)]">
                 ECU, ABS, Airbag, BCM, BSI, UCH ve binlerce orijinal elektronik modül.
               </p>
 
-              {/* Action Buttons matching Screenshot 1 */}
-              <div className="flex items-center justify-center lg:justify-start gap-4 pt-2">
+              {/* Action Buttons */}
+              <div className="flex flex-wrap items-center justify-start gap-4 pt-2">
                 <Link href="/urunler">
-                  <button className="px-7 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-sm tracking-wider shadow-lg shadow-blue-600/30 transition-all cursor-pointer">
+                  <button className="px-8 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-sm tracking-wider shadow-lg shadow-blue-600/35 hover:shadow-blue-500/55 transition-all cursor-pointer transform hover:-translate-y-0.5">
                     ÜRÜNLERİ İNCELE
                   </button>
                 </Link>
 
                 <Link href="/urunler">
-                  <button className="px-7 py-3 rounded-lg border border-slate-600 hover:border-white bg-transparent text-white font-bold text-sm tracking-wider hover:bg-white/10 transition-all cursor-pointer">
+                  <button className="px-8 py-3.5 rounded-xl border border-slate-600 hover:border-slate-300 bg-slate-900/80 hover:bg-slate-800/90 backdrop-blur-md text-white font-bold text-sm tracking-wider transition-all cursor-pointer transform hover:-translate-y-0.5 shadow-md">
                     OEM NO İLE ARA
                   </button>
                 </Link>
               </div>
             </div>
 
-            {/* Right: Floating 3D ECU Hardware Presentation matching Screenshot 1 */}
-            <div className="lg:col-span-6 relative flex justify-center">
-              <div className="relative w-full max-w-lg aspect-square sm:aspect-4/3 flex items-center justify-center">
-                <img
-                  src="/images/hero-ecu-modules.jpg"
-                  alt="TMS Oto Elektronik Modülleri"
-                  className="w-full h-full object-contain rounded-2xl filter drop-shadow-[0_20px_40px_rgba(0,102,255,0.4)]"
-                />
-              </div>
-            </div>
+            {/* Right side is open for the 16:9 photo composition */}
+            <div className="hidden lg:block lg:col-span-5 xl:col-span-6" />
           </div>
 
-          {/* 2. OEM NO İLE HIZLI ARAMA Dark Container matching Screenshot 1 */}
-          <div className="mt-12 max-w-4xl mx-auto search-box-dark rounded-2xl p-6 text-center space-y-4">
+          {/* 2. OEM NO İLE HIZLI ARAMA Dark Container */}
+          <div className="mt-12 sm:mt-16 max-w-4xl mx-auto backdrop-blur-xl bg-slate-950/85 border border-slate-800/90 rounded-2xl p-6 sm:p-7 text-center space-y-4 shadow-2xl shadow-black/50">
             <div className="flex items-center justify-center gap-3">
               <span className="h-px w-12 bg-slate-700" />
               <h3 className="text-xs uppercase font-extrabold tracking-widest text-slate-300">
@@ -140,49 +136,47 @@ export default function HomePage() {
               <span className="h-px w-12 bg-slate-700" />
             </div>
 
-            <form onSubmit={handleSearchSubmit} className="flex gap-2">
+            <form onSubmit={handleSearchSubmit} className="flex flex-col sm:flex-row gap-2.5">
               <input
                 type="text"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 placeholder="OEM, BOSCH, SIEMENS, PARÇA NO, ARAÇ MODELİ, VIN..."
-                className="flex-1 bg-white text-slate-900 placeholder:text-slate-400 font-mono text-sm px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase font-semibold"
+                className="flex-1 bg-white text-slate-900 placeholder:text-slate-400 font-mono text-sm px-4 py-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase font-semibold shadow-inner"
               />
               <button
                 type="submit"
-                className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-sm rounded-lg transition-colors cursor-pointer shrink-0"
+                className="px-8 py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-sm rounded-xl transition-all cursor-pointer shrink-0 shadow-md shadow-blue-600/30"
               >
                 ARA
               </button>
             </form>
 
-            {/* Popular Searches */}
-            <div className="flex items-center justify-center gap-2 flex-wrap text-xs text-slate-400">
-              <span className="font-medium">Popüler Aramalar:</span>
-              {popularSearches.map((tag) => (
-                <Link
-                  key={tag}
-                  href={`/urunler?q=${tag}`}
-                  className="font-mono text-slate-300 hover:text-blue-400 transition-colors"
-                >
-                  {tag}
-                </Link>
-              ))}
-            </div>
           </div>
         </div>
       </section>
+
 
       {/* 3. FOUR VALUE PROPOSITIONS matching Screenshot 1 */}
       <section className="w-full bg-white border-b border-slate-200 py-6 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6">
           <div className="flex items-center gap-3.5">
             <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+              <Truck className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="font-extrabold text-xs text-slate-900 uppercase">AYNI GÜN HIZLI KARGO</h4>
+              <p className="text-[11px] text-slate-500">Saat 16:00&apos;ya kadar verilen siparişler aynı gün yola çıkar</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div>
-              <h4 className="font-extrabold text-xs text-slate-900 uppercase">ORİJİNAL ÜRÜN</h4>
-              <p className="text-[11px] text-slate-500">Orijinal ve garantili ürünler</p>
+              <h4 className="font-extrabold text-xs text-slate-900 uppercase">GARANTİLİ &amp; ORİJİNAL</h4>
+              <p className="text-[11px] text-slate-500">Tüm oto elektronik modülleri garantilidir</p>
             </div>
           </div>
 
@@ -191,8 +185,8 @@ export default function HomePage() {
               <CheckCircle2 className="w-5 h-5" />
             </div>
             <div>
-              <h4 className="font-extrabold text-xs text-slate-900 uppercase">TEST EDİLMİŞ</h4>
-              <p className="text-[11px] text-slate-500">Tüm üniteler test edilerek gönderilir</p>
+              <h4 className="font-extrabold text-xs text-slate-900 uppercase">ÜRÜN İADE GÜVENCESİ</h4>
+              <p className="text-[11px] text-slate-500">Uyumsuzlukta koşulsuz birebir iade &amp; değişim</p>
             </div>
           </div>
 
@@ -201,18 +195,8 @@ export default function HomePage() {
               <Headphones className="w-5 h-5" />
             </div>
             <div>
-              <h4 className="font-extrabold text-xs text-slate-900 uppercase">UZMAN DESTEK</h4>
-              <p className="text-[11px] text-slate-500">Teknik destek ve danışmanlık</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-              <Truck className="w-5 h-5" />
-            </div>
-            <div>
-              <h4 className="font-extrabold text-xs text-slate-900 uppercase">HIZLI TESLİMAT</h4>
-              <p className="text-[11px] text-slate-500">Türkiye&apos;nin her yerine hızlı kargo</p>
+              <h4 className="font-extrabold text-xs text-slate-900 uppercase">UZMAN TEKNİK DESTEK</h4>
+              <p className="text-[11px] text-slate-500">WhatsApp &amp; Canlı Destek ile parça uyumluluk teyidi</p>
             </div>
           </div>
         </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import {
   Package,
@@ -23,6 +23,18 @@ import {
   Image as ImageIcon,
   Loader2,
   X,
+  Sparkles,
+  AlertCircle,
+  Send,
+  User,
+  ShoppingBag,
+  Check,
+  CheckCheck,
+  Phone,
+  PowerOff,
+  Headphones,
+  Circle,
+  Archive,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,13 +47,33 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { generateWhatsAppLink } from "@/lib/utils";
 
+// Subtle audio chime for new incoming chat message
+function playAdminNotificationSound() {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
+    osc.frequency.exponentialRampToValueAtTime(783.99, ctx.currentTime + 0.15); // G5
+    gain.gain.setValueAtTime(0.18, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.3);
+  } catch (e) {
+    // Ignore restricted audio
+  }
+}
+
 export default function AdminPage() {
-  const [activeTab, setActiveTab] = useState<"products" | "categories" | "inquiries" | "settings">("products");
+  const [activeTab, setActiveTab] = useState<"products" | "chats" | "categories" | "settings">("products");
   const [searchProduct, setSearchProduct] = useState("");
 
   // Product Modals & Form State
@@ -65,6 +97,19 @@ export default function AdminPage() {
   const [metaKeywords, setMetaKeywords] = useState("");
   const [tagsInput, setTagsInput] = useState("");
 
+  // AI Auto-Fill State
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiError, setAiError] = useState("");
+  const [aiSuccess, setAiSuccess] = useState("");
+
+  // Live Chat State
+  const [selectedChatId, setSelectedChatId] = useState<Id<"conversations"> | null>(null);
+  const [chatSearch, setChatSearch] = useState("");
+  const [chatStatusFilter, setChatStatusFilter] = useState<string>("active");
+  const [adminMessageInput, setAdminMessageInput] = useState("");
+  const chatMessagesEndRef = useRef<HTMLDivElement>(null);
+  const prevAdminMsgCountRef = useRef<number>(0);
+
   // Category Modal & Form State
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<any>(null);
@@ -87,10 +132,22 @@ export default function AdminPage() {
   // Queries
   const products = useQuery(api.products.list, { searchTerm: searchProduct || undefined, limit: 100 });
   const categories = useQuery(api.categories.list, { onlyActive: false });
-  const inquiries = useQuery(api.inquiries.list, {});
   const siteSettings = useQuery(api.siteSettings.get);
 
-  // Mutations
+  // Live Chat Queries & Mutations
+  const conversations = useQuery(api.chats.listConversations, {
+    status: chatStatusFilter === "all" ? undefined : chatStatusFilter,
+    searchTerm: chatSearch || undefined,
+  });
+
+  const activeChatMessages = useQuery(
+    api.chats.getMessages,
+    selectedChatId ? { conversationId: selectedChatId } : "skip"
+  );
+
+  const selectedConversation = conversations?.find((c) => c._id === selectedChatId);
+
+  const generateProductDetailsAction = useAction(api.ai.generateProductDetails);
   const generateUploadUrl = useMutation(api.files.generateUploadUrl);
   const createProduct = useMutation(api.products.create);
   const updateProduct = useMutation(api.products.update);
@@ -101,9 +158,44 @@ export default function AdminPage() {
   const updateCategory = useMutation(api.categories.update);
   const deleteCategory = useMutation(api.categories.deleteCategory);
 
-  const deleteInquiry = useMutation(api.inquiries.deleteInquiry);
   const updateSiteSettings = useMutation(api.siteSettings.update);
-  const seedAll = useMutation(api.seed.seedAll);
+
+  // Chat Mutations
+  const sendChatMessage = useMutation(api.chats.sendMessage);
+  const markChatAsRead = useMutation(api.chats.markAsRead);
+  const closeChatMutation = useMutation(api.chats.closeConversation);
+  const deleteChatMutation = useMutation(api.chats.deleteConversation);
+
+  // Calculate total unread chats for badge
+  const totalUnreadAdminCount = conversations?.reduce((acc, c) => acc + (c.unreadCountAdmin || 0), 0) || 0;
+
+  // Auto select first chat if none selected
+  useEffect(() => {
+    if (conversations && conversations.length > 0 && !selectedChatId) {
+      setSelectedChatId(conversations[0]._id);
+    }
+  }, [conversations, selectedChatId]);
+
+  // Mark chat as read when admin opens it
+  useEffect(() => {
+    if (selectedChatId && selectedConversation?.unreadCountAdmin) {
+      markChatAsRead({ conversationId: selectedChatId, reader: "admin" });
+    }
+  }, [selectedChatId, selectedConversation?.unreadCountAdmin, markChatAsRead]);
+
+  // Auto scroll chat messages to bottom & sound alert
+  useEffect(() => {
+    if (activeChatMessages && activeChatMessages.length > 0) {
+      if (activeChatMessages.length > prevAdminMsgCountRef.current) {
+        const last = activeChatMessages[activeChatMessages.length - 1];
+        if (last.sender === "visitor") {
+          playAdminNotificationSound();
+        }
+      }
+      prevAdminMsgCountRef.current = activeChatMessages.length;
+      chatMessagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [activeChatMessages]);
 
   // Settings form states
   const [settingsWhatsapp, setSettingsWhatsapp] = useState("");
@@ -113,7 +205,67 @@ export default function AdminPage() {
   const [settingsAnnouncement, setSettingsAnnouncement] = useState("");
   const [settingsSaved, setSettingsSaved] = useState(false);
 
-  // CONVEX STORAGE FILE UPLOAD HANDLERS
+  // AI AUTO-FILL HANDLER
+  const handleAiAutoFill = async () => {
+    if (!oemNumber.trim()) {
+      alert("Lütfen önce Parça No / OEM Kodu giriniz.");
+      return;
+    }
+
+    setAiGenerating(true);
+    setAiError("");
+    setAiSuccess("");
+
+    try {
+      const res = await generateProductDetailsAction({
+        oemNumber: oemNumber.trim().toUpperCase(),
+        additionalHint: brand ? `Marka: ${brand}` : undefined,
+      });
+
+      if (res && res.success) {
+        setTitle(res.title);
+        setBrand(res.brand);
+        if (res.model) setModel(res.model);
+        if (res.categoryId) setSelectedCategoryId(res.categoryId);
+        setCondition(res.condition || "Orijinal Çıkma");
+        setDescription(res.description);
+        setMetaTitle(res.metaTitle);
+        setMetaDescription(res.metaDescription);
+        setMetaKeywords(res.metaKeywords);
+        setTagsInput(res.tags ? res.tags.join(", ") : "");
+        setSlug(res.slug);
+
+        setAiSuccess(`✨ "${res.title}" bilgileri yapay zeka ile dolduruldu.`);
+        setTimeout(() => setAiSuccess(""), 4000);
+      }
+    } catch (err: any) {
+      console.error("AI Auto-fill error:", err);
+      setAiError(err?.message || "Yapay zeka yanıt veremedi. Lütfen OPENROUTER_API_KEY kontrol ediniz.");
+    } finally {
+      setAiGenerating(false);
+    }
+  };
+
+  // SEND ADMIN CHAT MESSAGE
+  const handleAdminSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adminMessageInput.trim() || !selectedChatId) return;
+
+    const text = adminMessageInput.trim();
+    setAdminMessageInput("");
+
+    try {
+      await sendChatMessage({
+        conversationId: selectedChatId,
+        sender: "admin",
+        text,
+      });
+    } catch (err) {
+      console.error("Send admin message error:", err);
+    }
+  };
+
+  // FILE UPLOAD HANDLERS
   const handleProductFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -125,9 +277,7 @@ export default function AdminPage() {
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        // 1. Get upload URL from Convex Storage
         const postUrl = await generateUploadUrl();
-        // 2. Upload file to Convex Storage
         const result = await fetch(postUrl, {
           method: "POST",
           headers: { "Content-Type": file.type || "application/octet-stream" },
@@ -141,8 +291,8 @@ export default function AdminPage() {
       setUploadedStorageIds(newStorageIds);
       setPreviewImages(newPreviews);
     } catch (err) {
-      console.error("Storage upload error:", err);
-      alert("Fotoğraf Convex Storage'a yüklenirken hata oluştu.");
+      console.error("Upload error:", err);
+      alert("Fotoğraf yüklenirken hata oluştu.");
     } finally {
       setUploadingImage(false);
     }
@@ -165,7 +315,7 @@ export default function AdminPage() {
       setCatStorageId(storageId);
       setCatPreviewImage(URL.createObjectURL(file));
     } catch (err) {
-      console.error("Category storage upload error:", err);
+      console.error("Category upload error:", err);
       alert("Kategori görseli yüklenirken hata oluştu.");
     } finally {
       setCatUploading(false);
@@ -192,6 +342,8 @@ export default function AdminPage() {
     setMetaDescription("");
     setMetaKeywords("");
     setTagsInput("");
+    setAiError("");
+    setAiSuccess("");
     setEditingProduct(null);
   };
 
@@ -213,6 +365,8 @@ export default function AdminPage() {
     setMetaDescription(p.metaDescription || "");
     setMetaKeywords(p.metaKeywords || "");
     setTagsInput(p.tags ? p.tags.join(", ") : "");
+    setAiError("");
+    setAiSuccess("");
     setAddProductModalOpen(true);
   };
 
@@ -248,7 +402,7 @@ export default function AdminPage() {
       model: model.trim() || undefined,
       condition,
       inStock,
-      description: description || `${title} test edilmiş orijinal oto elektronik parça.`,
+      description: description || `${title} orijinal oto elektronik parça.`,
       images,
       imageStorageIds: uploadedStorageIds.length > 0 ? uploadedStorageIds : undefined,
       metaTitle: metaTitle.trim() || undefined,
@@ -391,22 +545,8 @@ export default function AdminPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                if (confirm("Örnek oto elektronik verileri sıfırlanıp yeniden yüklensin mi?")) {
-                  seedAll();
-                }
-              }}
-              className="bg-slate-800 text-xs border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700 cursor-pointer"
-            >
-              <RotateCw className="w-3.5 h-3.5 mr-1" />
-              <span>Veritabanını Yenile (Seed)</span>
-            </Button>
-
             <Link href="/" target="_blank">
-              <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-xs font-bold gap-1">
+              <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-xs font-bold gap-1 cursor-pointer">
                 <span>Siteyi Görüntüle</span>
                 <ExternalLink className="w-3.5 h-3.5" />
               </Button>
@@ -432,6 +572,23 @@ export default function AdminPage() {
           </button>
 
           <button
+            onClick={() => setActiveTab("chats")}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer relative ${
+              activeTab === "chats"
+                ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/20"
+                : "bg-white text-slate-700 hover:bg-slate-200 border border-slate-200"
+            }`}
+          >
+            <Headphones className="w-4 h-4" />
+            <span>Canlı Destek & Sohbetler</span>
+            {totalUnreadAdminCount > 0 && (
+              <span className="bg-red-600 text-white text-[10px] font-black px-1.5 py-0.2 rounded-full animate-bounce">
+                {totalUnreadAdminCount}
+              </span>
+            )}
+          </button>
+
+          <button
             onClick={() => setActiveTab("categories")}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
               activeTab === "categories"
@@ -444,18 +601,6 @@ export default function AdminPage() {
           </button>
 
           <button
-            onClick={() => setActiveTab("inquiries")}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
-              activeTab === "inquiries"
-                ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
-                : "bg-white text-slate-700 hover:bg-slate-200 border border-slate-200"
-            }`}
-          >
-            <MessageCircle className="w-4 h-4" />
-            <span>Talepler & WhatsApp ({inquiries ? inquiries.length : 0})</span>
-          </button>
-
-          <button
             onClick={() => setActiveTab("settings")}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
               activeTab === "settings"
@@ -464,7 +609,7 @@ export default function AdminPage() {
             }`}
           >
             <Settings className="w-4 h-4" />
-            <span>İletişim & WhatsApp Ayarları</span>
+            <span>İletişim &amp; Site Ayarları</span>
           </button>
         </div>
 
@@ -600,6 +745,338 @@ export default function AdminPage() {
           </div>
         )}
 
+        {/* TAB 1.5: WHATSAPP-STYLE LIVE CHAT SUPPORT */}
+        {activeTab === "chats" && (
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden h-[720px] flex flex-col md:flex-row">
+            {/* Left Column: Conversations List */}
+            <div className="w-full md:w-80 lg:w-96 border-r border-slate-200 flex flex-col h-full bg-slate-50/50">
+              {/* Header & Filter */}
+              <div className="p-3.5 border-b border-slate-200 bg-white space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-extrabold text-sm text-slate-900 flex items-center gap-2">
+                    <Headphones className="w-4 h-4 text-emerald-600" />
+                    <span>Canlı Sohbetler</span>
+                  </h3>
+                  <span className="text-[11px] font-bold text-slate-500">
+                    {conversations?.length || 0} Konuşma
+                  </span>
+                </div>
+
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <Input
+                    placeholder="Müşteri adı veya OEM ara..."
+                    value={chatSearch}
+                    onChange={(e) => setChatSearch(e.target.value)}
+                    className="pl-8 h-8 text-xs bg-slate-50"
+                  />
+                </div>
+
+                {/* Status Toggle */}
+                <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl text-[11px] font-bold">
+                  <button
+                    onClick={() => setChatStatusFilter("active")}
+                    className={`flex-1 py-1 rounded-lg text-center transition-all cursor-pointer ${
+                      chatStatusFilter === "active" ? "bg-white text-emerald-800 shadow-xs font-black" : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    Aktifler
+                  </button>
+                  <button
+                    onClick={() => setChatStatusFilter("closed")}
+                    className={`flex-1 py-1 rounded-lg text-center transition-all cursor-pointer ${
+                      chatStatusFilter === "closed" ? "bg-white text-slate-800 shadow-xs font-black" : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    Kapatılanlar
+                  </button>
+                  <button
+                    onClick={() => setChatStatusFilter("all")}
+                    className={`flex-1 py-1 rounded-lg text-center transition-all cursor-pointer ${
+                      chatStatusFilter === "all" ? "bg-white text-slate-800 shadow-xs font-black" : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    Tümü
+                  </button>
+                </div>
+              </div>
+
+              {/* Conversations Feed */}
+              <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
+                {conversations && conversations.length > 0 ? (
+                  conversations.map((conv) => {
+                    const isSelected = conv._id === selectedChatId;
+                    const isClosed = conv.status === "closed";
+
+                    return (
+                      <div
+                        key={conv._id}
+                        onClick={() => setSelectedChatId(conv._id)}
+                        className={`p-3.5 transition-all cursor-pointer flex items-start gap-3 select-none ${
+                          isSelected
+                            ? "bg-emerald-50/80 border-l-4 border-emerald-600"
+                            : "hover:bg-slate-100/80"
+                        }`}
+                      >
+                        <div className="relative shrink-0">
+                          <div className="w-10 h-10 rounded-full bg-slate-200 border border-slate-300 flex items-center justify-center text-slate-700 font-bold text-sm">
+                            {conv.visitorName ? conv.visitorName.charAt(0).toUpperCase() : <User className="w-5 h-5 text-slate-400" />}
+                          </div>
+                          {!isClosed && (
+                            <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white"></span>
+                          )}
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-0.5">
+                            <h4 className="font-extrabold text-xs text-slate-900 truncate">
+                              {conv.visitorName || "Misafir Ziyaretçi"}
+                            </h4>
+                            <span className="text-[10px] text-slate-400 font-medium">
+                              {new Date(conv.lastMessageAt).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}
+                            </span>
+                          </div>
+
+                          {conv.visitorPhone && (
+                            <div className="flex items-center gap-1 text-[10px] text-emerald-700 font-bold mb-0.5">
+                              <Phone className="w-2.5 h-2.5 shrink-0" />
+                              <span>{conv.visitorPhone}</span>
+                            </div>
+                          )}
+
+                          {conv.productCard && (
+                            <div className="flex items-center gap-1 text-[10px] text-blue-700 font-bold truncate mb-1">
+                              <ShoppingBag className="w-3 h-3 shrink-0" />
+                              <span className="truncate">{conv.productCard.oemNumber} - {conv.productCard.title}</span>
+                            </div>
+                          )}
+
+                          <p className="text-[11px] text-slate-500 truncate">
+                            {conv.lastMessage || "Sohbet"}
+                          </p>
+                        </div>
+
+                        {conv.unreadCountAdmin > 0 && (
+                          <span className="bg-emerald-600 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center shrink-0 shadow-xs">
+                            {conv.unreadCountAdmin}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="p-8 text-center text-slate-400 text-xs">
+                    Sohbet bulunamadı.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Right Column: WhatsApp-Style Chat Room */}
+            {selectedConversation ? (
+              <div className="flex-1 flex flex-col h-full bg-[#efeae2]/40 relative">
+                {/* Chat Room Top Bar */}
+                <div className="p-3.5 bg-slate-900 text-white flex items-center justify-between shadow-xs z-10">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-full bg-emerald-600 flex items-center justify-center font-bold text-white text-sm shrink-0">
+                      {selectedConversation.visitorName ? selectedConversation.visitorName.charAt(0).toUpperCase() : <User className="w-4 h-4" />}
+                    </div>
+
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="font-extrabold text-sm text-white truncate">
+                          {selectedConversation.visitorName || "Misafir Ziyaretçi"}
+                        </h4>
+                        {selectedConversation.visitorPhone && (
+                          <span className="text-[11px] font-bold text-emerald-400 font-mono bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-800 flex items-center gap-1">
+                            <Phone className="w-2.5 h-2.5" />
+                            <span>{selectedConversation.visitorPhone}</span>
+                          </span>
+                        )}
+                        <Badge
+                          variant="secondary"
+                          className={`text-[9px] py-0 px-1.5 font-bold ${
+                            selectedConversation.status === "active"
+                              ? "bg-emerald-500/20 text-emerald-300 border-none"
+                              : "bg-slate-700 text-slate-300 border-none"
+                          }`}
+                        >
+                          {selectedConversation.status === "active" ? "Aktif" : "Kapatıldı"}
+                        </Badge>
+                      </div>
+
+                      {selectedConversation.productCard && (
+                        <Link
+                          href={`/urunler/${selectedConversation.productCard.slug}`}
+                          target="_blank"
+                          className="flex items-center gap-1 text-[11px] text-blue-300 hover:text-white truncate"
+                        >
+                          <span>İncelenen Parça: OEM <strong>{selectedConversation.productCard.oemNumber}</strong> ({selectedConversation.productCard.title})</span>
+                          <ExternalLink className="w-3 h-3 shrink-0" />
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Actions: WhatsApp Link, Close, Delete */}
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <a
+                      href={generateWhatsAppLink(
+                        selectedConversation.visitorPhone || "+905340653222",
+                        selectedConversation.productCard?.title,
+                        selectedConversation.productCard?.oemNumber,
+                        `Merhaba ${selectedConversation.visitorName || "Değerli Müşterimiz"}, TMS İthalat canlı destek hattından talebinizle ilgili ulaşıyoruz.`
+                      )}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="bg-emerald-700 hover:bg-emerald-800 text-white border-emerald-600 text-xs font-bold gap-1 h-8 cursor-pointer"
+                        title="WhatsApp'a Aktar"
+                      >
+                        <Phone className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">WhatsApp</span>
+                      </Button>
+                    </a>
+
+                    {selectedConversation.status === "active" && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (confirm("Bu canlı destek oturumunu sonlandırmak istediğinizden emin misiniz?")) {
+                            closeChatMutation({ conversationId: selectedConversation._id });
+                          }
+                        }}
+                        className="bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700 text-xs font-bold gap-1 h-8 cursor-pointer"
+                        title="Sohbeti Kapat"
+                      >
+                        <PowerOff className="w-3.5 h-3.5 text-amber-400" />
+                        <span className="hidden sm:inline">Kapat</span>
+                      </Button>
+                    )}
+
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        if (confirm("Bu sohbeti ve tüm mesajlarını kalıcı olarak silmek istediğinizden emin misiniz?")) {
+                          deleteChatMutation({ conversationId: selectedConversation._id });
+                          setSelectedChatId(null);
+                        }
+                      }}
+                      className="text-red-400 hover:text-red-200 hover:bg-red-950/50 h-8 w-8 p-0 cursor-pointer"
+                      title="Sohbeti Sil"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Message Stream */}
+                <div className="flex-1 p-4 overflow-y-auto space-y-3 text-xs">
+                  {activeChatMessages?.map((m) => {
+                    const isAdmin = m.sender === "admin";
+                    const isSystem = m.sender === "system";
+
+                    if (isSystem) {
+                      return (
+                        <div key={m._id} className="flex justify-center my-2">
+                          <span className="text-[11px] font-semibold text-slate-600 bg-white/90 shadow-2xs px-3.5 py-1 rounded-full text-center max-w-md border border-slate-200/60">
+                            {m.text}
+                          </span>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div
+                        key={m._id}
+                        className={`flex flex-col ${isAdmin ? "items-end" : "items-start"}`}
+                      >
+                        <div
+                          className={`max-w-[75%] rounded-2xl px-4 py-2.5 shadow-xs ${
+                            isAdmin
+                              ? "bg-[#d9fdd3] text-slate-900 rounded-tr-xs border border-emerald-200/60"
+                              : "bg-white text-slate-900 rounded-tl-xs border border-slate-200/80"
+                          }`}
+                        >
+                          <div className="text-[10px] font-bold text-slate-500 mb-0.5">
+                            {isAdmin ? "Siz (Yetkili)" : (selectedConversation.visitorName || "Müşteri")}
+                          </div>
+
+                          {m.productCard && (
+                            <div className="mb-2 p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 text-left">
+                              <div className="flex items-center gap-3">
+                                {m.productCard.image && (
+                                  <img
+                                    src={m.productCard.image}
+                                    alt={m.productCard.title}
+                                    className="w-10 h-10 object-contain rounded-lg bg-white border border-slate-200"
+                                  />
+                                )}
+                                <div className="min-w-0">
+                                  <p className="font-extrabold text-xs text-slate-900 truncate">{m.productCard.title}</p>
+                                  <p className="text-[11px] text-blue-700 font-mono font-bold">OEM: {m.productCard.oemNumber}</p>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          <p className="leading-relaxed whitespace-pre-wrap">{m.text}</p>
+
+                          <div className="flex items-center justify-end gap-1 mt-1 text-[9px] text-slate-400">
+                            <span>{new Date(m.createdAt).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}</span>
+                            {isAdmin && (
+                              m.isRead ? (
+                                <CheckCheck className="w-3 h-3 text-blue-500" />
+                              ) : (
+                                <Check className="w-3 h-3 text-slate-400" />
+                              )
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div ref={chatMessagesEndRef} />
+                </div>
+
+                {/* Input Bar */}
+                <form
+                  onSubmit={handleAdminSendMessage}
+                  className="p-3 bg-white border-t border-slate-200 flex items-center gap-2 z-10"
+                >
+                  <Input
+                    placeholder="Müşteriye yanıt yazın... (Enter ile gönder)"
+                    value={adminMessageInput}
+                    onChange={(e) => setAdminMessageInput(e.target.value)}
+                    className="text-xs h-10 bg-slate-50 rounded-xl"
+                  />
+                  <Button
+                    type="submit"
+                    disabled={!adminMessageInput.trim()}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-10 px-4 rounded-xl shadow-xs gap-1.5 cursor-pointer"
+                  >
+                    <span>Gönder</span>
+                    <Send className="w-3.5 h-3.5" />
+                  </Button>
+                </form>
+              </div>
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-400 bg-slate-50/50">
+                <Headphones className="w-12 h-12 text-slate-300 mb-3" />
+                <h4 className="font-extrabold text-sm text-slate-600">Sohbet Seçilmedi</h4>
+                <p className="text-xs text-slate-400 max-w-xs mt-1">
+                  Sol taraftaki listeden bir konuşma seçerek müşterilerinizle gerçek zamanlı yazışabilirsiniz.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* TAB 2: CATEGORIES FULL MANAGEMENT */}
         {activeTab === "categories" && (
           <div className="space-y-4">
@@ -676,92 +1153,13 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* TAB 3: INQUIRIES */}
-        {activeTab === "inquiries" && (
-          <div className="space-y-4">
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-              <div className="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-                <h3 className="font-extrabold text-sm text-slate-900">
-                  Gelen Fiyat & WhatsApp Talepleri
-                </h3>
-                <span className="text-xs text-slate-500">
-                  Toplam {inquiries?.length || 0} Talep
-                </span>
-              </div>
-
-              <div className="divide-y divide-slate-100">
-                {inquiries && inquiries.length > 0 ? (
-                  inquiries.map((inq) => (
-                    <div key={inq._id} className="p-4 hover:bg-slate-50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                      <div className="space-y-1 max-w-xl">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-slate-900 text-sm">{inq.name}</span>
-                          <span className="text-xs font-semibold text-blue-600">{inq.phone}</span>
-                          <Badge variant="secondary" className="text-[10px]">
-                            {inq.type}
-                          </Badge>
-                        </div>
-                        {inq.productTitle && (
-                          <p className="text-xs font-semibold text-slate-700">
-                            Talep Edilen Parça: {inq.productTitle} (OEM: {inq.oemNumber || "-"})
-                          </p>
-                        )}
-                        {inq.vehicleInfo && (
-                          <p className="text-xs text-slate-500 font-mono">
-                            Araç: {inq.vehicleInfo}
-                          </p>
-                        )}
-                        <p className="text-xs text-slate-600">{inq.message}</p>
-                        <span className="text-[10px] text-slate-400">
-                          {new Date(inq.createdAt).toLocaleString("tr-TR")}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0">
-                        <a
-                          href={generateWhatsAppLink(
-                            inq.phone,
-                            inq.productTitle,
-                            inq.oemNumber,
-                            `Merhaba ${inq.name}, TMS İthalat olarak talebinizle ilgili ulaşıyoruz.`
-                          )}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <Button variant="whatsapp" size="sm" className="text-xs font-bold gap-1">
-                            <MessageCircle className="w-3.5 h-3.5 fill-white" />
-                            <span>WhatsApp İle Yanıtla</span>
-                          </Button>
-                        </a>
-
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => deleteInquiry({ id: inq._id })}
-                          className="text-red-500 hover:bg-red-50 h-8 px-2"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="p-8 text-center text-slate-500 text-xs">
-                    Henüz yeni talep bulunmuyor.
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* TAB 4: SETTINGS */}
+        {/* TAB 3: SETTINGS */}
         {activeTab === "settings" && (
           <div className="max-w-2xl bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-xs space-y-6">
             <div>
-              <h3 className="text-lg font-black text-slate-900">İletişim & WhatsApp Ayarları</h3>
+              <h3 className="text-lg font-black text-slate-900">İletişim &amp; Site Ayarları</h3>
               <p className="text-xs text-slate-500">
-                Sitedeki WhatsApp sipariş numarası ve telefon bilgilerini güncelleyin.
+                Sitede ve altbilgide (Footer) görünen iletişim bilgilerini ve üst duyuru bandını güncelleyin.
               </p>
             </div>
 
@@ -773,26 +1171,30 @@ export default function AdminPage() {
             )}
 
             <form onSubmit={handleSaveSettings} className="space-y-4 text-xs">
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">
-                  WhatsApp Sipariş Numarası (Boşluksuz, Ülke kodu ile)
-                </label>
-                <Input
-                  defaultValue={siteSettings?.whatsappNumber || "+905340653222"}
-                  onChange={(e) => setSettingsWhatsapp(e.target.value)}
-                  placeholder="+905340653222"
-                />
-              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">
+                    WhatsApp Sipariş Numarası
+                  </label>
+                  <Input
+                    defaultValue={siteSettings?.whatsappNumber || "+905340653222"}
+                    onChange={(e) => setSettingsWhatsapp(e.target.value)}
+                    placeholder="+905340653222"
+                    className="bg-white"
+                  />
+                </div>
 
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">
-                  Telefon Numarası (Görünen)
-                </label>
-                <Input
-                  defaultValue={siteSettings?.phone || "+90 534 065 32 22"}
-                  onChange={(e) => setSettingsPhone(e.target.value)}
-                  placeholder="+90 534 065 32 22"
-                />
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">
+                    Telefon Numarası (Görünen)
+                  </label>
+                  <Input
+                    defaultValue={siteSettings?.phone || "(0212) 861 32 72"}
+                    onChange={(e) => setSettingsPhone(e.target.value)}
+                    placeholder="(0212) 861 32 72"
+                    className="bg-white"
+                  />
+                </div>
               </div>
 
               <div>
@@ -803,17 +1205,19 @@ export default function AdminPage() {
                   defaultValue={siteSettings?.email || "info@tmsithalat.com"}
                   onChange={(e) => setSettingsEmail(e.target.value)}
                   placeholder="info@tmsithalat.com"
+                  className="bg-white"
                 />
               </div>
 
               <div>
                 <label className="font-bold text-slate-700 block mb-1">
-                  Depo & Mağaza Adresi
+                  Depo &amp; Mağaza Adresi
                 </label>
                 <Input
-                  defaultValue={siteSettings?.address || "Fevzipaşa Mh. 10121 Sk. No: 2 Karatay / KONYA"}
+                  defaultValue={siteSettings?.address || "Hürriyet, İstiklal Cd. No:102, 34537 Büyükçekmece/İstanbul"}
                   onChange={(e) => setSettingsAddress(e.target.value)}
-                  placeholder="Fevzipaşa Mh. 10121 Sk. No: 2 Karatay / KONYA"
+                  placeholder="Hürriyet, İstiklal Cd. No:102, 34537 Büyükçekmece/İstanbul"
+                  className="bg-white"
                 />
               </div>
 
@@ -822,22 +1226,25 @@ export default function AdminPage() {
                   Üst Duyuru Bandı Metni
                 </label>
                 <Input
-                  defaultValue={siteSettings?.announcement || "Türkiye'nin her yerine aynı gün hızlı kargo imkanı!"}
+                  defaultValue={siteSettings?.announcement || "⚡ Saat 16:00'ya kadar verilen siparişlerde aynı gün hızlı kargo! Orijinal & iade güvencesi."}
                   onChange={(e) => setSettingsAnnouncement(e.target.value)}
                   placeholder="Duyuru metni..."
+                  className="bg-white"
                 />
               </div>
 
-              <Button type="submit" className="bg-blue-600 hover:bg-blue-700 font-bold h-11 px-6 rounded-xl">
-                <Save className="w-4 h-4 mr-2" />
-                <span>Ayarları Kaydet</span>
-              </Button>
+              <div className="pt-2">
+                <Button type="submit" className="bg-blue-600 hover:bg-blue-700 font-bold h-11 px-8 rounded-xl cursor-pointer">
+                  <Save className="w-4 h-4 mr-2" />
+                  <span>Ayarları Kaydet</span>
+                </Button>
+              </div>
             </form>
           </div>
         )}
       </div>
 
-      {/* Product Add / Edit Modal (With Convex Storage Upload) */}
+      {/* Product Add / Edit Modal (All AI & Storage Actions Unified Here) */}
       <Dialog open={addProductModalOpen} onOpenChange={setAddProductModalOpen}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -845,33 +1252,61 @@ export default function AdminPage() {
               {editingProduct ? "Ürünü Düzenle" : "Yeni Ürün Ekle"}
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
-              Oto elektronik parçanın tüm temel, depo ve SEO bilgilerini giriniz.
+              Parça numarasını yazıp AI ile tek tıkla formu doldurabilir, raf kodu ve fotoğrafları ekleyebilirsiniz.
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleSaveProduct} className="space-y-4 pt-2 text-xs">
-            <div>
-              <label className="font-bold text-slate-700 block mb-1">Ürün Başlığı *</label>
-              <Input
-                required
-                placeholder="Örn: Renault Motor Beyni ECU Sagem S113717205D Orijinal Çıkma Motor Kontrol Ünitesi"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-              />
+          {aiSuccess && (
+            <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>{aiSuccess}</span>
+            </div>
+          )}
+
+          {aiError && (
+            <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+              <span>{aiError}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleSaveProduct} className="space-y-4 pt-1 text-xs">
+            {/* OEM Input + AI Auto Fill Button */}
+            <div className="p-3 bg-purple-50/70 border border-purple-200 rounded-2xl space-y-2">
+              <label className="font-bold text-purple-950 block">
+                OEM / Parça Numarası & AI Otomatik Doldurma
+              </label>
+              <div className="flex gap-2">
+                <Input
+                  required
+                  placeholder="Örn: S113717205D veya 0281011234"
+                  value={oemNumber}
+                  onChange={(e) => setOemNumber(e.target.value.toUpperCase())}
+                  className="font-mono uppercase font-bold text-sm bg-white border-purple-300"
+                />
+
+                <Button
+                  type="button"
+                  disabled={aiGenerating || !oemNumber.trim()}
+                  onClick={handleAiAutoFill}
+                  className="bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs gap-1.5 shrink-0 px-4 h-10 rounded-xl shadow-md shadow-purple-600/20 cursor-pointer"
+                >
+                  {aiGenerating ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>AI Dolduruyor...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
+                      <span>✨ AI İle Doldur</span>
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Parça No / OEM Kodu *</label>
-                <Input
-                  required
-                  placeholder="Örn: S113717205D"
-                  value={oemNumber}
-                  onChange={(e) => setOemNumber(e.target.value.toUpperCase())}
-                  className="font-mono uppercase font-bold"
-                />
-              </div>
-
               <div>
                 <label className="font-bold text-slate-700 block mb-1">Depo Raf Kodu</label>
                 <Input
@@ -881,6 +1316,30 @@ export default function AdminPage() {
                   className="font-mono uppercase font-semibold"
                 />
               </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Durum</label>
+                <select
+                  value={condition}
+                  onChange={(e) => setCondition(e.target.value)}
+                  className="w-full h-10 rounded-lg border border-slate-200 bg-white px-3 font-semibold text-slate-800"
+                >
+                  <option value="Orijinal Çıkma">Orijinal Çıkma</option>
+                  <option value="Sıfır - Orijinal">Sıfır - Orijinal</option>
+                  <option value="Revizyonlu">Revizyonlu</option>
+                  <option value="Sıfırlanmış - Virgin">Sıfırlanmış - Virgin</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="font-bold text-slate-700 block mb-1">Ürün Başlığı *</label>
+              <Input
+                required
+                placeholder="Örn: Renault Motor Beyni ECU Sagem S113717205D Orijinal Çıkma Motor Kontrol Ünitesi"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -920,26 +1379,12 @@ export default function AdminPage() {
               </div>
             </div>
 
-            <div>
-              <label className="font-bold text-slate-700 block mb-1">Durum</label>
-              <select
-                value={condition}
-                onChange={(e) => setCondition(e.target.value)}
-                className="w-full h-10 rounded-lg border border-slate-200 bg-white px-3 font-semibold text-slate-800"
-              >
-                <option value="Orijinal Çıkma">Orijinal Çıkma</option>
-                <option value="Sıfır - Orijinal">Sıfır - Orijinal</option>
-                <option value="Revizyonlu">Revizyonlu</option>
-                <option value="Sıfırlanmış - Virgin">Sıfırlanmış - Virgin</option>
-              </select>
-            </div>
-
-            {/* Convex Storage Upload Section */}
+            {/* Product Photo Upload Section */}
             <div className="p-3.5 bg-blue-50/50 rounded-xl border border-blue-100 space-y-2.5">
               <div className="flex items-center justify-between">
                 <label className="font-bold text-slate-900 flex items-center gap-1.5">
                   <ImageIcon className="w-4 h-4 text-blue-600" />
-                  <span>Ürün Fotoğrafları (Convex Storage)</span>
+                  <span>Ürün Fotoğrafları</span>
                 </label>
                 <input
                   type="file"
@@ -1093,7 +1538,7 @@ export default function AdminPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Category Add / Edit Modal (With Convex Storage Upload) */}
+      {/* Category Add / Edit Modal */}
       <Dialog open={categoryModalOpen} onOpenChange={setCategoryModalOpen}>
         <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -1138,12 +1583,12 @@ export default function AdminPage() {
               />
             </div>
 
-            {/* Convex Storage Upload for Category */}
+            {/* Category Image Upload */}
             <div className="p-3 bg-blue-50/50 rounded-xl border border-blue-100 space-y-2">
               <div className="flex items-center justify-between">
                 <label className="font-bold text-slate-900 flex items-center gap-1.5">
                   <ImageIcon className="w-3.5 h-3.5 text-blue-600" />
-                  <span>Kategori Görseli (Convex Storage)</span>
+                  <span>Kategori Görseli</span>
                 </label>
                 <input
                   type="file"

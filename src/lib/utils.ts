@@ -20,7 +20,13 @@ export function generateWhatsAppLink(
   oemNumber?: string,
   customMessage?: string
 ): string {
-  const cleanPhone = phoneNumber.replace(/[^0-9]/g, "");
+  let cleanPhone = (phoneNumber || "").replace(/[^0-9]/g, "");
+  if (cleanPhone.startsWith("0") && cleanPhone.length === 11) {
+    cleanPhone = "9" + cleanPhone;
+  } else if (cleanPhone.length === 10 && cleanPhone.startsWith("5")) {
+    cleanPhone = "90" + cleanPhone;
+  }
+
   let message = "";
   if (customMessage) {
     message = customMessage;

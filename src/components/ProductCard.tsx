@@ -1,49 +1,26 @@
 "use client";
 
 import Link from "next/link";
-import { Eye, MessageCircle, Cpu } from "lucide-react";
+import { Eye, MessageCircle, Cpu, Tag } from "lucide-react";
 import { generateWhatsAppLink } from "@/lib/utils";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import { ProductWithCategory } from "@/types";
 
 export interface ProductCardProps {
-  product: {
-    _id: string;
-    title: string;
-    slug: string;
-    oemNumber: string;
-    boschNumber?: string;
-    categorySlug: string;
-    categoryName: string;
-    brand: string;
-    model: string;
-    yearRange: string;
-    fuelType: string;
-    condition: string;
-    warranty?: string;
-    tested: boolean;
-    inStock: boolean;
-    images: string[];
-  };
+  product: ProductWithCategory;
 }
 
 export default function ProductCard({ product }: ProductCardProps) {
   const settings = useQuery(api.siteSettings.get);
   const whatsappNumber = settings?.whatsappNumber || "+905340653222";
 
-  // Formatted brand/type subtitle (e.g. "Bosch ECU" or "Mercedes ECU")
-  const brandTypeLabel = product.boschNumber
-    ? "Bosch ECU"
-    : product.title.includes("Siemens")
-    ? "Siemens ECU"
-    : `${product.brand} ECU`;
-
   return (
-    <div className="product-card-clean rounded-xl p-4 flex flex-col justify-between group bg-white">
+    <div className="product-card-clean rounded-xl p-4 flex flex-col justify-between group bg-white border border-slate-200/80 hover:border-blue-400 hover:shadow-md transition-all">
       <div>
         {/* Hardware Photo on Clean Background */}
         <Link href={`/urunler/${product.slug}`} className="block">
-          <div className="relative aspect-4/3 w-full rounded-lg bg-slate-50 border border-slate-100 overflow-hidden flex items-center justify-center p-3 mb-3.5">
+          <div className="relative aspect-4/3 w-full rounded-lg bg-slate-50 border border-slate-100 overflow-hidden flex items-center justify-center p-3 mb-3">
             {product.images?.[0] ? (
               <img
                 src={product.images[0]}
@@ -57,7 +34,7 @@ export default function ProductCard({ product }: ProductCardProps) {
           </div>
         </Link>
 
-        {/* Product Information matching Screenshot 2 */}
+        {/* Product Information */}
         <div className="space-y-1">
           {/* Large Bold OEM Code */}
           <Link href={`/urunler/${product.slug}`} className="block">
@@ -66,31 +43,33 @@ export default function ProductCard({ product }: ProductCardProps) {
             </span>
           </Link>
 
-          {/* Subtitle (e.g. Bosch ECU) */}
-          <p className="text-xs font-semibold text-slate-600">
-            {brandTypeLabel}
+          {/* Product Category & Brand */}
+          <p className="text-xs font-semibold text-slate-700">
+            {product.categoryName || "Oto Elektronik"} • {product.brand}
           </p>
 
-          {/* Vehicle Model & Engine */}
-          <p className="text-xs text-slate-500 font-medium">
-            {product.brand} {product.model}
-          </p>
+          {/* Model / Compatibility */}
+          {product.model && (
+            <p className="text-xs text-slate-500 font-medium truncate">
+              {product.model}
+            </p>
+          )}
 
-          {/* Year Range */}
-          <p className="text-xs text-slate-400 font-medium">
-            {product.yearRange}
-          </p>
-
-          {/* Pill Badges: Çıkma / Test Edildi */}
-          <div className="flex items-center gap-1.5 pt-2">
-            <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200">
-              {product.condition.includes("Çıkma") ? "Çıkma" : product.condition}
+          {/* Pill Badges: Condition & Stock */}
+          <div className="flex items-center gap-1.5 pt-1.5 flex-wrap">
+            <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
+              {product.condition}
             </span>
-            {product.tested && (
-              <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200">
-                Test Edildi
-              </span>
-            )}
+
+            <span
+              className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                product.inStock
+                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                  : "bg-amber-50 text-amber-700 border border-amber-200"
+              }`}
+            >
+              {product.inStock ? "Hazır Stok" : "Tükendi"}
+            </span>
           </div>
         </div>
       </div>
@@ -108,15 +87,16 @@ export default function ProductCard({ product }: ProductCardProps) {
           href={generateWhatsAppLink(
             whatsappNumber,
             product.title,
-            product.oemNumber
+            product.oemNumber,
+            `Merhaba, ${product.oemNumber} kodlu (${product.title}) parça hakkında bilgi almak istiyorum.`
           )}
           target="_blank"
           rel="noopener noreferrer"
-          title="WhatsApp Sipariş & Fiyat"
           className="shrink-0"
         >
-          <button className="h-8 w-8 rounded-lg bg-[#25D366] hover:bg-[#20bd5a] text-white flex items-center justify-center shadow-xs transition-colors cursor-pointer">
-            <MessageCircle className="w-4 h-4 fill-white" />
+          <button className="py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs">
+            <MessageCircle className="w-3.5 h-3.5 fill-white" />
+            <span className="hidden sm:inline">WhatsApp</span>
           </button>
         </a>
       </div>

@@ -69,25 +69,7 @@ export default defineSchema({
     .index("by_brand", ["brand"])
     .index("by_inStock", ["inStock"]),
 
-  // 4. WhatsApp Talepleri & Teklif / İletişim Formları
-  inquiries: defineTable({
-    productId: v.optional(v.id("products")),
-    productTitle: v.optional(v.string()),
-    oemNumber: v.optional(v.string()),
-    name: v.string(),
-    phone: v.string(),
-    email: v.optional(v.string()),
-    vehicleInfo: v.optional(v.string()), // Marka, Model, Yıl, Şasi No
-    message: v.string(),
-    type: v.string(), // "whatsapp_order", "quote_request", "contact_form", "vin_search"
-    status: v.string(), // "new", "contacted", "completed", "archived"
-    createdAt: v.number(),
-  })
-    .index("by_createdAt", ["createdAt"])
-    .index("by_status", ["status"])
-    .index("by_type", ["type"]),
-
-  // 5. Site Genel Ayarları
+  // 4. Site Genel Ayarları
   siteSettings: defineTable({
     siteName: v.string(),
     slogan: v.string(),
@@ -100,6 +82,8 @@ export default defineSchema({
     announcement: v.optional(v.string()),
     heroHeadline: v.string(),
     heroSubheadline: v.string(),
+    aiPromptTemplate: v.optional(v.string()), // AI Ürün Oluşturma Sistem Prompt Şablonu
+    aiModel: v.optional(v.string()), // OpenRouter AI Modeli (Örn: meta-llama/llama-3.3-70b-instruct:free)
     stats: v.object({
       productsCount: v.string(),
       brandsCount: v.string(),
@@ -107,6 +91,52 @@ export default defineSchema({
       experienceYears: v.string(),
     }),
   }),
+
+  // 6. Canlı Destek Sohbet Oturumları (Live Support Conversations)
+  conversations: defineTable({
+    visitorId: v.string(), // Tarayıcı UUID
+    visitorName: v.optional(v.string()), // Ziyaretçi Adı
+    visitorPhone: v.optional(v.string()),
+    status: v.string(), // "active", "closed"
+    unreadCountAdmin: v.number(),
+    unreadCountVisitor: v.number(),
+    lastMessage: v.optional(v.string()),
+    lastMessageAt: v.number(),
+    productCard: v.optional(
+      v.object({
+        title: v.string(),
+        oemNumber: v.string(),
+        image: v.optional(v.string()),
+        slug: v.string(),
+        brand: v.string(),
+      })
+    ),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_visitorId", ["visitorId"])
+    .index("by_status", ["status"])
+    .index("by_lastMessageAt", ["lastMessageAt"]),
+
+  // 7. Canlı Destek Mesajları (Live Support Messages)
+  messages: defineTable({
+    conversationId: v.id("conversations"),
+    sender: v.string(), // "visitor" | "admin" | "system"
+    text: v.string(),
+    productCard: v.optional(
+      v.object({
+        title: v.string(),
+        oemNumber: v.string(),
+        image: v.optional(v.string()),
+        slug: v.string(),
+        brand: v.string(),
+      })
+    ),
+    isRead: v.boolean(),
+    createdAt: v.number(),
+  })
+    .index("by_conversationId", ["conversationId"])
+    .index("by_createdAt", ["createdAt"]),
 }, {
   schemaValidation: false, // Disables legacy document validation conflicts while maintaining 100% strict TypeScript types
 });

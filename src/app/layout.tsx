@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ConvexClientProvider } from "./ConvexClientProvider";
 import { ConvexAuthNextjsServerProvider } from "@convex-dev/auth/nextjs/server";
+import LiveChatWidget from "@/components/LiveChatWidget";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -16,7 +17,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "TMS İTHALAT | Türkiye'nin Oto Elektronik Parça Merkezi",
-  description: "ECU (Motor Beyinleri), ABS, Airbag, BCM, BSI, SAM ve binlerce orijinal oto elektronik kontrol modülleri. Test edilmiş, garantili ve aynı gün kargo.",
+  description: "ECU (Motor Beyinleri), ABS, Airbag, BCM, BSI, SAM ve binlerce orijinal oto elektronik kontrol modülleri. Orijinal, garantili ve aynı gün kargo.",
 };
 
 export default function RootLayout({
@@ -27,11 +28,14 @@ export default function RootLayout({
   return (
     <ConvexAuthNextjsServerProvider>
       <html
-        lang="en"
+        lang="tr"
         className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
       >
         <body className="min-h-full flex flex-col">
-          <ConvexClientProvider>{children}</ConvexClientProvider>
+          <ConvexClientProvider>
+            {children}
+            <LiveChatWidget />
+          </ConvexClientProvider>
         </body>
       </html>
     </ConvexAuthNextjsServerProvider>

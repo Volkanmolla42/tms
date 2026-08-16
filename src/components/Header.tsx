@@ -26,22 +26,14 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-50 w-full bg-white border-b border-slate-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-18">
-          {/* Logo matching exact design in screenshot */}
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="flex flex-col">
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-2xl font-black tracking-tighter text-blue-600">
-                  TMS
-                </span>
-                <span className="text-2xl font-black italic tracking-tight text-slate-950">
-                  İTHALAT
-                </span>
-              </div>
-              <span className="text-[9px] tracking-[0.2em] uppercase font-bold text-slate-400 -mt-1">
-                OTO ELEKTRONİK MERKEZİ
-              </span>
-            </div>
+        <div className="flex items-center justify-between h-16 sm:h-18">
+          {/* Official TMS Logo */}
+          <Link href="/" className="flex items-center group py-1">
+            <img
+              src="/images/logo_transparent.png"
+              alt="TMS İthalat Logo"
+              className="h-10 sm:h-12 w-auto object-contain"
+            />
           </Link>
 
           {/* Desktop Navigation Links matching Screenshot */}
