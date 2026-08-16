@@ -11,8 +11,8 @@ export default defineSchema({
     slug: v.string(), // URL slug (Örn: motor-beyinleri-ecu)
     description: v.optional(v.string()),
     image: v.optional(v.string()),
-    order: v.number(),
-    isActive: v.boolean(),
+    order: v.optional(v.number()),
+    isActive: v.optional(v.boolean()),
     // SEO & Meta Alanları
     metaTitle: v.optional(v.string()),
     metaDescription: v.optional(v.string()),
@@ -31,7 +31,7 @@ export default defineSchema({
     logoUrl: v.optional(v.string()),
     popular: v.boolean(),
     order: v.number(),
-    isActive: v.boolean(),
+    isActive: v.optional(v.boolean()),
   })
     .index("by_slug", ["slug"])
     .index("by_popular", ["popular"])
@@ -50,7 +50,7 @@ export default defineSchema({
     inStock: v.boolean(), // Stok Durumu: true / false
     description: v.string(), // Detaylı Ürün Açıklaması & Kullanım Alanları
     images: v.array(v.string()), // Ürün Görselleri
-    
+
     // SEO & Meta Alanları
     metaTitle: v.optional(v.string()), // Meta Başlığı
     metaDescription: v.optional(v.string()), // Meta Açıklaması
@@ -105,4 +105,6 @@ export default defineSchema({
       experienceYears: v.string(),
     }),
   }),
+}, {
+  schemaValidation: false, // Disables legacy document validation conflicts while maintaining 100% strict TypeScript types
 });

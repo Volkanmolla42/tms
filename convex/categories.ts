@@ -15,7 +15,7 @@ export const list = query({
     }
 
     // Sort by order ascending
-    return cats.sort((a, b) => a.order - b.order);
+    return cats.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   },
 });
 

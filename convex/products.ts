@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { Doc } from "./_generated/dataModel";
+import { Doc, Id } from "./_generated/dataModel";
 
 export const list = query({
   args: {
@@ -82,7 +82,7 @@ export const list = query({
     // Populate relational category details for each product
     return await Promise.all(
       filtered.map(async (p) => {
-        const cat = await ctx.db.get(p.categoryId);
+        const cat = p.categoryId ? ((await ctx.db.get(p.categoryId as Id<"categories">)) as Doc<"categories"> | null) : null;
         return {
           ...p,
           categoryName: cat?.name || "Oto Elektronik",
@@ -103,7 +103,7 @@ export const getFeatured = query({
 
     return await Promise.all(
       items.map(async (p) => {
-        const cat = await ctx.db.get(p.categoryId);
+        const cat = p.categoryId ? ((await ctx.db.get(p.categoryId as Id<"categories">)) as Doc<"categories"> | null) : null;
         return {
           ...p,
           categoryName: cat?.name || "Oto Elektronik",
@@ -124,7 +124,7 @@ export const getBySlug = query({
 
     if (!product) return null;
 
-    const cat = await ctx.db.get(product.categoryId);
+    const cat = product.categoryId ? ((await ctx.db.get(product.categoryId as Id<"categories">)) as Doc<"categories"> | null) : null;
     return {
       ...product,
       categoryName: cat?.name || "Oto Elektronik",
@@ -146,7 +146,7 @@ export const getByOem = query({
 
     return await Promise.all(
       matched.map(async (p) => {
-        const cat = await ctx.db.get(p.categoryId);
+        const cat = p.categoryId ? ((await ctx.db.get(p.categoryId as Id<"categories">)) as Doc<"categories"> | null) : null;
         return {
           ...p,
           categoryName: cat?.name || "Oto Elektronik",
@@ -190,7 +190,7 @@ export const search = query({
 
     return await Promise.all(
       filtered.map(async (p) => {
-        const cat = await ctx.db.get(p.categoryId);
+        const cat = p.categoryId ? ((await ctx.db.get(p.categoryId as Id<"categories">)) as Doc<"categories"> | null) : null;
         return {
           ...p,
           categoryName: cat?.name || "Oto Elektronik",
