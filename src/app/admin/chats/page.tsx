@@ -118,8 +118,7 @@ export default function AdminChatsPage() {
     }
   };
 
-  const totalUnreadAdminCount =
-    conversations?.reduce((acc, c) => acc + (c.unreadCountAdmin || 0), 0) || 0;
+
 
   return (
     <div className="space-y-4">
