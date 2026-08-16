@@ -35,6 +35,7 @@ import {
   Headphones,
   Circle,
   Archive,
+  Award,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -73,7 +74,7 @@ function playAdminNotificationSound() {
 }
 
 export default function AdminPage() {
-  const [activeTab, setActiveTab] = useState<"products" | "chats" | "categories" | "settings">("products");
+  const [activeTab, setActiveTab] = useState<"products" | "chats" | "categories" | "brands" | "settings">("products");
   const [searchProduct, setSearchProduct] = useState("");
 
   // Product Modals & Form State
@@ -126,12 +127,29 @@ export default function AdminPage() {
   const [catMetaKeywords, setCatMetaKeywords] = useState("");
   const [categoryError, setCategoryError] = useState<string>("");
 
+  // Brand Modal & Form State
+  const [brandModalOpen, setBrandModalOpen] = useState(false);
+  const [editingBrand, setEditingBrand] = useState<any>(null);
+  const [brandName, setBrandName] = useState("");
+  const [brandSlug, setBrandSlug] = useState("");
+  const [brandLogoUrl, setBrandLogoUrl] = useState("");
+  const [brandPopular, setBrandPopular] = useState(false);
+  const [brandOrder, setBrandOrder] = useState<number>(1);
+  const [brandIsActive, setBrandIsActive] = useState<boolean>(true);
+  const [brandUploading, setBrandUploading] = useState(false);
+  const [brandSearch, setBrandSearch] = useState("");
+  const [brandError, setBrandError] = useState("");
+  const [autoFillLoading, setAutoFillLoading] = useState(false);
+  const [autoFillSuccess, setAutoFillSuccess] = useState("");
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const catFileInputRef = useRef<HTMLInputElement>(null);
+  const brandFileInputRef = useRef<HTMLInputElement>(null);
 
   // Queries
   const products = useQuery(api.products.list, { searchTerm: searchProduct || undefined, limit: 100 });
   const categories = useQuery(api.categories.list, { onlyActive: false });
+  const brands = useQuery(api.brands.list);
   const siteSettings = useQuery(api.siteSettings.get);
 
   // Live Chat Queries & Mutations
@@ -157,6 +175,11 @@ export default function AdminPage() {
   const createCategory = useMutation(api.categories.create);
   const updateCategory = useMutation(api.categories.update);
   const deleteCategory = useMutation(api.categories.deleteCategory);
+
+  const createBrand = useMutation(api.brands.create);
+  const updateBrand = useMutation(api.brands.update);
+  const deleteBrand = useMutation(api.brands.deleteBrand);
+  const autoFillLogos = useMutation(api.brands.autoFillLogos);
 
   const updateSiteSettings = useMutation(api.siteSettings.update);
 
@@ -324,6 +347,35 @@ export default function AdminPage() {
     } finally {
       setCatUploading(false);
       if (catFileInputRef.current) catFileInputRef.current.value = "";
+    }
+  };
+
+  const handleBrandFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setBrandUploading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", files[0]);
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+
+      if (data.success && data.url) {
+        setBrandLogoUrl(data.url);
+      } else {
+        alert(data.message || "Marka logosu yüklenirken hata oluştu.");
+      }
+    } catch (err) {
+      console.error("Brand upload error:", err);
+      alert("Marka logosu yüklenirken hata oluştu.");
+    } finally {
+      setBrandUploading(false);
+      if (brandFileInputRef.current) brandFileInputRef.current.value = "";
     }
   };
 
@@ -509,6 +561,96 @@ export default function AdminPage() {
     }
   };
 
+  // BRAND HANDLERS
+  const resetBrandForm = () => {
+    setEditingBrand(null);
+    setBrandName("");
+    setBrandSlug("");
+    setBrandLogoUrl("");
+    setBrandPopular(false);
+    setBrandOrder((brands?.length || 0) + 1);
+    setBrandIsActive(true);
+    setBrandError("");
+  };
+
+  const handleOpenAddBrand = () => {
+    resetBrandForm();
+    setBrandModalOpen(true);
+  };
+
+  const handleOpenEditBrand = (b: any) => {
+    setEditingBrand(b);
+    setBrandName(b.name);
+    setBrandSlug(b.slug);
+    setBrandLogoUrl(b.logoUrl || "");
+    setBrandPopular(b.popular ?? false);
+    setBrandOrder(b.order ?? 1);
+    setBrandIsActive(b.isActive !== false);
+    setBrandError("");
+    setBrandModalOpen(true);
+  };
+
+  const handleSaveBrand = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!brandName.trim()) {
+      setBrandError("Marka adı zorunludur.");
+      return;
+    }
+    const finalSlug = brandSlug.trim() || brandName.toLowerCase().replace(/[^a-z0-9]/g, "-").replace(/-+/g, "-");
+
+    try {
+      if (editingBrand) {
+        await updateBrand({
+          id: editingBrand._id,
+          name: brandName.trim(),
+          slug: finalSlug,
+          logoUrl: brandLogoUrl.trim() || undefined,
+          popular: brandPopular,
+          order: Number(brandOrder),
+          isActive: brandIsActive,
+        });
+      } else {
+        await createBrand({
+          name: brandName.trim(),
+          slug: finalSlug,
+          logoUrl: brandLogoUrl.trim() || undefined,
+          popular: brandPopular,
+          order: Number(brandOrder),
+          isActive: brandIsActive,
+        });
+      }
+
+      setBrandModalOpen(false);
+      resetBrandForm();
+    } catch (err: any) {
+      setBrandError(err?.message || "Marka kaydedilirken bir hata oluştu.");
+    }
+  };
+
+  const handleDeleteBrand = async (b: any) => {
+    if (confirm(`'${b.name}' markasını silmek istediğinizden emin misiniz?`)) {
+      try {
+        await deleteBrand({ id: b._id });
+      } catch (err: any) {
+        alert(err?.message || "Marka silinemedi.");
+      }
+    }
+  };
+
+  const handleAutoFillLogos = async () => {
+    setAutoFillLoading(true);
+    setAutoFillSuccess("");
+    try {
+      const res = await autoFillLogos();
+      setAutoFillSuccess(`✨ ${res.updatedCount} markanın logosu otomatik olarak güncellendi.`);
+      setTimeout(() => setAutoFillSuccess(""), 4000);
+    } catch (err: any) {
+      alert(err?.message || "Logolar güncellenirken hata oluştu.");
+    } finally {
+      setAutoFillLoading(false);
+    }
+  };
+
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!siteSettings) return;
@@ -603,6 +745,18 @@ export default function AdminPage() {
           >
             <Layers className="w-4 h-4" />
             <span>Kategori Yönetimi ({categories ? categories.length : 0})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("brands")}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
+              activeTab === "brands"
+                ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
+                : "bg-white text-slate-700 hover:bg-slate-200 border border-slate-200"
+            }`}
+          >
+            <Award className="w-4 h-4" />
+            <span>Markalar &amp; Logolar ({brands ? brands.length : 0})</span>
           </button>
 
           <button
@@ -1158,7 +1312,166 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* TAB 3: SETTINGS */}
+        {/* TAB 3: BRANDS MANAGEMENT */}
+        {activeTab === "brands" && (
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+              <div>
+                <h3 className="font-black text-sm text-slate-900 flex items-center gap-2">
+                  <span>Araç Markaları &amp; Logolar</span>
+                  <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200">
+                    {brands ? brands.length : 0} Marka
+                  </Badge>
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Desteklenen araç markalarını yönetin, logolarını yükleyin ve sıralamalarını belirleyin.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  onClick={handleAutoFillLogos}
+                  disabled={autoFillLoading}
+                  variant="outline"
+                  className="border-purple-300 text-purple-700 hover:bg-purple-50 font-bold text-xs gap-1.5 h-10 rounded-xl cursor-pointer"
+                >
+                  {autoFillLoading ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Logolar Yükleniyor...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                      <span>Logoları Otomatik Doldur</span>
+                    </>
+                  )}
+                </Button>
+
+                <Button
+                  onClick={handleOpenAddBrand}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs gap-1.5 h-10 rounded-xl cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Yeni Marka Ekle</span>
+                </Button>
+              </div>
+            </div>
+
+            {autoFillSuccess && (
+              <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold rounded-xl flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>{autoFillSuccess}</span>
+              </div>
+            )}
+
+            {/* Search filter */}
+            <div className="relative max-w-sm">
+              <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+              <Input
+                placeholder="Marka adına göre filtrele..."
+                value={brandSearch}
+                onChange={(e) => setBrandSearch(e.target.value)}
+                className="pl-9 bg-white text-xs"
+              />
+            </div>
+
+            {/* Brands Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {brands
+                ?.filter(
+                  (b) =>
+                    !brandSearch ||
+                    b.name.toLowerCase().includes(brandSearch.toLowerCase()) ||
+                    b.slug.toLowerCase().includes(brandSearch.toLowerCase())
+                )
+                .map((b) => (
+                  <div
+                    key={b._id}
+                    className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between gap-3 hover:border-blue-300 hover:shadow-md transition-all group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-16 h-16 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0 p-2.5 group-hover:scale-105 transition-transform">
+                        {b.logoUrl ? (
+                          <img
+                            src={b.logoUrl}
+                            alt={`${b.name} logosu`}
+                            className="w-full h-full object-contain"
+                            onError={(e) => {
+                              (e.currentTarget as HTMLElement).style.display = "none";
+                            }}
+                          />
+                        ) : (
+                          <Cpu className="w-7 h-7 text-slate-400" />
+                        )}
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <h4 className="font-black text-sm text-slate-900 truncate">{b.name}</h4>
+                          {b.popular && (
+                            <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200">
+                              Popüler
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-slate-400 font-mono truncate">{b.slug}</p>
+                        <div className="flex items-center gap-2 mt-1.5">
+                          <span className="text-[10px] text-slate-500 font-bold bg-slate-100 px-1.5 py-0.5 rounded">
+                            Sıra: {b.order ?? 1}
+                          </span>
+                          <span
+                            className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                              b.isActive !== false
+                                ? "bg-emerald-100 text-emerald-800"
+                                : "bg-slate-100 text-slate-600"
+                            }`}
+                          >
+                            {b.isActive !== false ? "Aktif" : "Pasif"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                      <Link
+                        href={`/urunler?marka=${encodeURIComponent(b.name)}`}
+                        target="_blank"
+                        className="text-[11px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                      >
+                        <span>Parçaları Gör</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </Link>
+
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleOpenEditBrand(b)}
+                          className="h-8 w-8 p-0 text-slate-600 hover:text-blue-600"
+                          title="Düzenle"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteBrand(b)}
+                          className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                          title="Sil"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 4: SETTINGS */}
         {activeTab === "settings" && (
           <div className="max-w-2xl bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-xs space-y-6">
             <div>
@@ -1722,6 +2035,174 @@ export default function AdminPage() {
               </Button>
               <Button type="submit" className="bg-blue-600 hover:bg-blue-700 font-bold px-6">
                 {editingCategory ? "Güncelle" : "Kategori Oluştur"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Brand Add / Edit Modal */}
+      <Dialog open={brandModalOpen} onOpenChange={setBrandModalOpen}>
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-black text-slate-900">
+              {editingBrand ? "Markayı Düzenle" : "Yeni Marka Ekle"}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              Araç markası adını, logosunu, sıralamasını ve popülerlik durumunu belirleyin.
+            </DialogDescription>
+          </DialogHeader>
+
+          {brandError && (
+            <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-xs font-semibold">
+              {brandError}
+            </div>
+          )}
+
+          <form onSubmit={handleSaveBrand} className="space-y-3.5 pt-2 text-xs">
+            <div>
+              <label className="font-bold text-slate-700 block mb-1">Marka Adı *</label>
+              <Input
+                required
+                placeholder="Örn: Volkswagen, Renault, BMW"
+                value={brandName}
+                onChange={(e) => {
+                  setBrandName(e.target.value);
+                  if (!editingBrand) {
+                    setBrandSlug(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, "-"));
+                  }
+                }}
+              />
+            </div>
+
+            <div>
+              <label className="font-bold text-slate-700 block mb-1">URL Slug *</label>
+              <Input
+                required
+                placeholder="volkswagen, renault, bmw"
+                value={brandSlug}
+                onChange={(e) => setBrandSlug(e.target.value.toLowerCase())}
+                className="font-mono"
+              />
+            </div>
+
+            {/* Brand Logo Upload & URL */}
+            <div className="p-3 bg-blue-50/50 rounded-xl border border-blue-100 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <label className="font-bold text-slate-900 flex items-center gap-1.5">
+                  <ImageIcon className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Marka Logosu</span>
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  ref={brandFileInputRef}
+                  onChange={handleBrandFileUpload}
+                  className="hidden"
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={brandUploading}
+                  onClick={() => brandFileInputRef.current?.click()}
+                  className="bg-white border-blue-300 text-blue-700 hover:bg-blue-50 text-xs font-bold gap-1 cursor-pointer h-7"
+                >
+                  {brandUploading ? (
+                    <>
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      <span>Yükleniyor...</span>
+                    </>
+                  ) : (
+                    <>
+                      <UploadCloud className="w-3 h-3 text-blue-600" />
+                      <span>Logo Yükle</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              <div>
+                <label className="text-[11px] text-slate-600 block mb-1 font-semibold">veya Logo URL Girin:</label>
+                <Input
+                  placeholder="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/volkswagen.svg"
+                  value={brandLogoUrl}
+                  onChange={(e) => setBrandLogoUrl(e.target.value)}
+                  className="font-mono text-[11px] bg-white"
+                />
+              </div>
+
+              {brandLogoUrl ? (
+                <div className="flex items-center gap-3 pt-1">
+                  <div className="relative w-16 h-16 rounded-xl border border-slate-200 bg-white p-2 flex items-center justify-center">
+                    <img
+                      src={brandLogoUrl}
+                      alt="Logo Preview"
+                      className="w-full h-full object-contain"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLElement).style.display = "none";
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setBrandLogoUrl("")}
+                      className="absolute top-0.5 right-0.5 bg-red-600 text-white rounded-full p-0.5 opacity-80 hover:opacity-100 cursor-pointer"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                  <span className="text-[11px] text-emerald-700 font-semibold">Logo önizlemesi hazır</span>
+                </div>
+              ) : (
+                <p className="text-[11px] text-slate-500">
+                  Dosya yükleyin veya bir logo web bağlantısı (SVG/PNG) yapıştırın.
+                </p>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 items-center">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Sıralama (Order)</label>
+                <Input
+                  type="number"
+                  value={brandOrder}
+                  onChange={(e) => setBrandOrder(Number(e.target.value))}
+                />
+              </div>
+
+              <div className="space-y-2 pt-2">
+                <label className="flex items-center gap-2 font-bold text-slate-800 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={brandPopular}
+                    onChange={(e) => setBrandPopular(e.target.checked)}
+                    className="w-4 h-4 rounded text-blue-600"
+                  />
+                  <span>Popüler Marka</span>
+                </label>
+
+                <label className="flex items-center gap-2 font-bold text-slate-800 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={brandIsActive}
+                    onChange={(e) => setBrandIsActive(e.target.checked)}
+                    className="w-4 h-4 rounded text-blue-600"
+                  />
+                  <span>Yayında (Aktif)</span>
+                </label>
+              </div>
+            </div>
+
+            <div className="pt-3 flex justify-end gap-2 border-t border-slate-100">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setBrandModalOpen(false)}
+              >
+                İptal
+              </Button>
+              <Button type="submit" className="bg-blue-600 hover:bg-blue-700 font-bold px-6">
+                {editingBrand ? "Güncelle" : "Marka Oluştur"}
               </Button>
             </div>
           </form>

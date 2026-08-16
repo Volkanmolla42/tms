@@ -27,6 +27,7 @@ export default function HomePage() {
   const [searchInput, setSearchInput] = useState("");
 
   const categories = useQuery(api.categories.list, {});
+  const brands = useQuery(api.brands.list);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -291,14 +292,27 @@ export default function HomePage() {
             <span className="h-px w-10 bg-slate-300" />
           </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6">
-            {brandNames.map((name) => (
+          <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
+            {(brands && brands.length > 0
+              ? brands
+              : brandNames.map((name, i) => ({ _id: `fallback-${i}`, name, logoUrl: undefined }))
+            ).map((b) => (
               <Link
-                key={name}
-                href={`/urunler?marka=${encodeURIComponent(name)}`}
-                className="px-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-extrabold text-slate-700 hover:text-blue-600 hover:border-blue-300 transition-all shadow-2xs cursor-pointer"
+                key={b._id || b.name}
+                href={`/urunler?marka=${encodeURIComponent(b.name)}`}
+                className="group flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-extrabold text-slate-700 hover:text-blue-600 hover:border-blue-300 hover:bg-white hover:shadow-md transition-all shadow-2xs cursor-pointer"
               >
-                {name}
+                {b.logoUrl && (
+                  <img
+                    src={b.logoUrl}
+                    alt={`${b.name} logosu`}
+                    className="w-4 h-4 object-contain opacity-75 group-hover:opacity-100 transition-opacity"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLElement).style.display = "none";
+                    }}
+                  />
+                )}
+                <span>{b.name}</span>
               </Link>
             ))}
           </div>

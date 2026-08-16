@@ -50,10 +50,21 @@ export default function MarkalarPage() {
             <Link
               key={brand._id}
               href={`/urunler?marka=${encodeURIComponent(brand.name)}`}
-              className="group flex flex-col items-center justify-center p-6 rounded-2xl bg-white border border-slate-200 hover:border-blue-500 shadow-xs hover:shadow-xl transition-all duration-300 hover:-translate-y-1 text-center"
+              className="group flex flex-col items-center justify-center p-6 rounded-2xl bg-white border border-slate-200 hover:border-blue-500 shadow-xs hover:shadow-xl transition-all duration-300 hover:-translate-y-1 text-center relative overflow-hidden"
             >
-              <div className="w-16 h-16 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                <Cpu className="w-8 h-8 text-blue-600" />
+              <div className="w-18 h-18 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center mb-3 group-hover:scale-105 group-hover:bg-blue-50/50 group-hover:border-blue-200 transition-all duration-300 p-3">
+                {brand.logoUrl ? (
+                  <img
+                    src={brand.logoUrl}
+                    alt={`${brand.name} logosu`}
+                    className="w-full h-full object-contain filter group-hover:brightness-90 transition-transform duration-300"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLElement).style.display = "none";
+                    }}
+                  />
+                ) : (
+                  <Cpu className="w-8 h-8 text-blue-600" />
+                )}
               </div>
               <h3 className="font-extrabold text-base text-slate-900 group-hover:text-blue-600 transition-colors">
                 {brand.name}
