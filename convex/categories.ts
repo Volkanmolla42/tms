@@ -2,19 +2,20 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
 export const list = query({
-  args: {},
-  handler: async (ctx) => {
-    return await ctx.db.query("categories").withIndex("by_order").take(100);
-  },
-});
+  args: { onlyActive: v.optional(v.boolean()) },
+  handler: async (ctx, args) => {
+    let cats;
+    if (args.onlyActive !== false) {
+      cats = await ctx.db
+        .query("categories")
+        .withIndex("by_isActive", (q) => q.eq("isActive", true))
+        .collect();
+    } else {
+      cats = await ctx.db.query("categories").collect();
+    }
 
-export const getFeatured = query({
-  args: {},
-  handler: async (ctx) => {
-    return await ctx.db
-      .query("categories")
-      .withIndex("by_featured", (q) => q.eq("featured", true))
-      .take(20);
+    // Sort by order ascending
+    return cats.sort((a, b) => a.order - b.order);
   },
 });
 
@@ -28,41 +29,77 @@ export const getBySlug = query({
   },
 });
 
+export const getById = query({
+  args: { id: v.id("categories") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.id);
+  },
+});
+
 export const create = mutation({
   args: {
-    slug: v.string(),
     name: v.string(),
-    description: v.string(),
-    image: v.string(),
+    slug: v.string(),
+    description: v.optional(v.string()),
+    image: v.optional(v.string()),
     order: v.number(),
-    featured: v.boolean(),
-    itemCount: v.optional(v.number()),
+    isActive: v.boolean(),
+    metaTitle: v.optional(v.string()),
+    metaDescription: v.optional(v.string()),
+    metaKeywords: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("categories", args);
+    const existing = await ctx.db
+      .query("categories")
+      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
+      .first();
+    if (existing) {
+      throw new Error(`'${args.slug}' slug'ına sahip bir kategori zaten mevcut.`);
+    }
+
+    const now = Date.now();
+    return await ctx.db.insert("categories", {
+      ...args,
+      createdAt: now,
+      updatedAt: now,
+    });
   },
 });
 
 export const update = mutation({
   args: {
     id: v.id("categories"),
-    slug: v.string(),
     name: v.string(),
-    description: v.string(),
-    image: v.string(),
+    slug: v.string(),
+    description: v.optional(v.string()),
+    image: v.optional(v.string()),
     order: v.number(),
-    featured: v.boolean(),
-    itemCount: v.optional(v.number()),
+    isActive: v.boolean(),
+    metaTitle: v.optional(v.string()),
+    metaDescription: v.optional(v.string()),
+    metaKeywords: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { id, ...fields } = args;
-    await ctx.db.patch(id, fields);
+    await ctx.db.patch(id, {
+      ...fields,
+      updatedAt: Date.now(),
+    });
   },
 });
 
 export const deleteCategory = mutation({
   args: { id: v.id("categories") },
   handler: async (ctx, args) => {
+    const productsInCategory = await ctx.db
+      .query("products")
+      .withIndex("by_categoryId", (q) => q.eq("categoryId", args.id))
+      .take(1);
+
+    if (productsInCategory.length > 0) {
+      throw new Error("Bu kategoriye bağlı ürünler bulunmaktadır. Önce ürünlerin kategorisini değiştiriniz veya ürünleri siliniz.");
+    }
+
     await ctx.db.delete(args.id);
   },
 });

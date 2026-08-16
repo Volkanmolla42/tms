@@ -11,15 +11,14 @@ import {
   Trash2,
   Edit,
   CheckCircle2,
-  XCircle,
   RotateCw,
   Search,
   ExternalLink,
-  Phone,
-  Eye,
-  Home,
   Save,
   Cpu,
+  FolderPlus,
+  Globe,
+  Tag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,40 +33,49 @@ import {
 } from "@/components/ui/dialog";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
+import { Id } from "../../../convex/_generated/dataModel";
 import { generateWhatsAppLink } from "@/lib/utils";
 
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<"products" | "categories" | "inquiries" | "settings">("products");
   const [searchProduct, setSearchProduct] = useState("");
+
+  // Product Modals & Form State
   const [addProductModalOpen, setAddProductModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
-
-  // Form State for Add / Edit Product
   const [title, setTitle] = useState("");
+  const [slug, setSlug] = useState("");
   const [oemNumber, setOemNumber] = useState("");
-  const [boschNumber, setBoschNumber] = useState("");
-  const [siemensNumber, setSiemensNumber] = useState("");
-  const [categorySlug, setCategorySlug] = useState("motor-beyinleri-ecu");
-  const [categoryName, setCategoryName] = useState("Motor Beyinleri (ECU)");
-  const [brand, setBrand] = useState("Volkswagen");
-  const [model, setModel] = useState("Passat");
-  const [yearRange, setYearRange] = useState("2010 - 2014");
-  const [fuelType, setFuelType] = useState("Dizel");
-  const [condition, setCondition] = useState("Çıkma - Orijinal");
-  const [warranty, setWarranty] = useState("3 Ay Garanti");
+  const [shelfCode, setShelfCode] = useState("");
+  const [brand, setBrand] = useState("Renault");
+  const [model, setModel] = useState("");
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
+  const [condition, setCondition] = useState("Orijinal Çıkma");
   const [inStock, setInStock] = useState(true);
-  const [tested, setTested] = useState(true);
-  const [plugAndPlay, setPlugAndPlay] = useState(true);
-  const [pinCount, setPinCount] = useState("94 Pin");
-  const [voltage, setVoltage] = useState("12V");
-  const [weight, setWeight] = useState("1.25 kg");
-  const [dimensions, setDimensions] = useState("18 x 16 x 4 cm");
   const [description, setDescription] = useState("");
   const [imageUrl, setImageUrl] = useState("");
+  const [metaTitle, setMetaTitle] = useState("");
+  const [metaDescription, setMetaDescription] = useState("");
+  const [metaKeywords, setMetaKeywords] = useState("");
+  const [tagsInput, setTagsInput] = useState("");
+
+  // Category Modal & Form State
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<any>(null);
+  const [catName, setCatName] = useState("");
+  const [catSlug, setCatSlug] = useState("");
+  const [catDescription, setCatDescription] = useState("");
+  const [catImage, setCatImage] = useState("");
+  const [catOrder, setCatOrder] = useState<number>(1);
+  const [catIsActive, setCatIsActive] = useState<boolean>(true);
+  const [catMetaTitle, setCatMetaTitle] = useState("");
+  const [catMetaDescription, setCatMetaDescription] = useState("");
+  const [catMetaKeywords, setCatMetaKeywords] = useState("");
+  const [categoryError, setCategoryError] = useState<string>("");
 
   // Queries
   const products = useQuery(api.products.list, { searchTerm: searchProduct || undefined, limit: 100 });
-  const categories = useQuery(api.categories.list);
+  const categories = useQuery(api.categories.list, { onlyActive: false });
   const inquiries = useQuery(api.inquiries.list, {});
   const siteSettings = useQuery(api.siteSettings.get);
 
@@ -76,7 +84,11 @@ export default function AdminPage() {
   const updateProduct = useMutation(api.products.update);
   const toggleStock = useMutation(api.products.toggleStock);
   const deleteProduct = useMutation(api.products.deleteProduct);
-  const updateInquiryStatus = useMutation(api.inquiries.updateStatus);
+
+  const createCategory = useMutation(api.categories.create);
+  const updateCategory = useMutation(api.categories.update);
+  const deleteCategory = useMutation(api.categories.deleteCategory);
+
   const deleteInquiry = useMutation(api.inquiries.deleteInquiry);
   const updateSiteSettings = useMutation(api.siteSettings.update);
   const seedAll = useMutation(api.seed.seedAll);
@@ -89,121 +101,176 @@ export default function AdminPage() {
   const [settingsAnnouncement, setSettingsAnnouncement] = useState("");
   const [settingsSaved, setSettingsSaved] = useState(false);
 
+  // PRODUCT HANDLERS
   const resetProductForm = () => {
     setTitle("");
+    setSlug("");
     setOemNumber("");
-    setBoschNumber("");
-    setSiemensNumber("");
-    setBrand("Volkswagen");
+    setShelfCode("");
+    setBrand("Renault");
     setModel("");
-    setYearRange("2012 - 2016");
-    setFuelType("Dizel");
-    setCondition("Çıkma - Orijinal");
-    setWarranty("3 Ay Garanti");
+    if (categories && categories.length > 0) {
+      setSelectedCategoryId(categories[0]._id);
+    }
+    setCondition("Orijinal Çıkma");
     setInStock(true);
-    setTested(true);
-    setPlugAndPlay(true);
-    setPinCount("94 Pin");
     setDescription("");
     setImageUrl("");
+    setMetaTitle("");
+    setMetaDescription("");
+    setMetaKeywords("");
+    setTagsInput("");
     setEditingProduct(null);
   };
 
   const handleOpenEdit = (p: any) => {
     setEditingProduct(p);
     setTitle(p.title);
+    setSlug(p.slug || "");
     setOemNumber(p.oemNumber);
-    setBoschNumber(p.boschNumber || "");
-    setSiemensNumber(p.siemensNumber || "");
-    setCategorySlug(p.categorySlug);
-    setCategoryName(p.categoryName);
+    setShelfCode(p.shelfCode || "");
     setBrand(p.brand);
-    setModel(p.model);
-    setYearRange(p.yearRange);
-    setFuelType(p.fuelType);
+    setModel(p.model || "");
+    setSelectedCategoryId(p.categoryId);
     setCondition(p.condition);
-    setWarranty(p.warranty || "3 Ay Garanti");
     setInStock(p.inStock);
-    setTested(p.tested);
-    setPlugAndPlay(p.plugAndPlay);
-    setPinCount(p.pinCount || "94 Pin");
     setDescription(p.description);
     setImageUrl(p.images?.[0] || "");
+    setMetaTitle(p.metaTitle || "");
+    setMetaDescription(p.metaDescription || "");
+    setMetaKeywords(p.metaKeywords || "");
+    setTagsInput(p.tags ? p.tags.join(", ") : "");
     setAddProductModalOpen(true);
   };
 
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    const slug = `${oemNumber.toLowerCase().replace(/[^a-z0-9]/g, "-")}-${brand.toLowerCase()}-${model.toLowerCase().replace(/[^a-z0-9]/g, "-")}`;
-    const images = imageUrl
-      ? [imageUrl]
-      : ["https://images.unsplash.com/photo-1597733336794-12d05021d510?auto=format&fit=crop&q=80&w=800"];
+    if (!selectedCategoryId && categories && categories.length > 0) {
+      setSelectedCategoryId(categories[0]._id);
+    }
+
+    const targetCatId = (selectedCategoryId || categories?.[0]?._id) as Id<"categories">;
+    if (!targetCatId) {
+      alert("Lütfen önce bir kategori seçiniz veya oluşturunuz.");
+      return;
+    }
+
+    const generatedSlug = slug.trim()
+      ? slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-")
+      : `${brand.toLowerCase().replace(/[^a-z0-9]/g, "-")}-${oemNumber.toLowerCase().replace(/[^a-z0-9]/g, "-")}-motor-beyni-ecu`;
+
+    const images = imageUrl ? [imageUrl] : ["/images/cat-ecu.jpg"];
+    const tags = tagsInput
+      .split(",")
+      .map((t) => t.trim())
+      .filter((t) => t.length > 0);
+
+    const payload = {
+      title,
+      slug: generatedSlug,
+      oemNumber,
+      shelfCode: shelfCode.trim() ? shelfCode.trim().toUpperCase() : undefined,
+      categoryId: targetCatId,
+      brand,
+      model: model.trim() || undefined,
+      condition,
+      inStock,
+      description: description || `${title} test edilmiş orijinal oto elektronik parça.`,
+      images,
+      metaTitle: metaTitle.trim() || undefined,
+      metaDescription: metaDescription.trim() || undefined,
+      metaKeywords: metaKeywords.trim() || undefined,
+      tags: tags.length > 0 ? tags : undefined,
+    };
 
     if (editingProduct) {
       await updateProduct({
         id: editingProduct._id,
-        title,
-        slug,
-        oemNumber,
-        boschNumber: boschNumber || undefined,
-        siemensNumber: siemensNumber || undefined,
-        categorySlug,
-        categoryName,
-        brand,
-        model,
-        yearRange,
-        fuelType,
-        condition,
-        warranty,
-        tested,
-        plugAndPlay,
-        pinCount,
-        voltage,
-        weight,
-        dimensions,
-        inStock,
-        priceText: "Fiyat Sorunuz",
-        description: description || `${title} test edilmiş orijinal modül.`,
-        images,
-        compatibleVehicles: [
-          { brand, model, engine: fuelType, yearRange, oemNumber },
-        ],
-        featured: true,
+        ...payload,
       });
     } else {
-      await createProduct({
-        title,
-        slug,
-        oemNumber,
-        boschNumber: boschNumber || undefined,
-        siemensNumber: siemensNumber || undefined,
-        categorySlug,
-        categoryName,
-        brand,
-        model,
-        yearRange,
-        fuelType,
-        condition,
-        warranty,
-        tested,
-        plugAndPlay,
-        pinCount,
-        voltage,
-        weight,
-        dimensions,
-        inStock,
-        priceText: "Fiyat Sorunuz",
-        description: description || `${title} test edilmiş orijinal modül.`,
-        images,
-        compatibleVehicles: [
-          { brand, model, engine: fuelType, yearRange, oemNumber },
-        ],
-        featured: true,
-      });
+      await createProduct(payload);
     }
 
     setAddProductModalOpen(false);
     resetProductForm();
+  };
+
+  // CATEGORY HANDLERS
+  const resetCategoryForm = () => {
+    setCatName("");
+    setCatSlug("");
+    setCatDescription("");
+    setCatImage("");
+    setCatOrder((categories?.length || 0) + 1);
+    setCatIsActive(true);
+    setCatMetaTitle("");
+    setCatMetaDescription("");
+    setCatMetaKeywords("");
+    setEditingCategory(null);
+    setCategoryError("");
+  };
+
+  const handleOpenEditCategory = (c: any) => {
+    setEditingCategory(c);
+    setCatName(c.name);
+    setCatSlug(c.slug);
+    setCatDescription(c.description || "");
+    setCatImage(c.image || "");
+    setCatOrder(c.order);
+    setCatIsActive(c.isActive ?? true);
+    setCatMetaTitle(c.metaTitle || "");
+    setCatMetaDescription(c.metaDescription || "");
+    setCatMetaKeywords(c.metaKeywords || "");
+    setCategoryError("");
+    setCategoryModalOpen(true);
+  };
+
+  const handleSaveCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCategoryError("");
+
+    const generatedSlug = catSlug.trim()
+      ? catSlug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-")
+      : catName.trim().toLowerCase().replace(/[^a-z0-9]/g, "-");
+
+    try {
+      const payload = {
+        name: catName,
+        slug: generatedSlug,
+        description: catDescription || undefined,
+        image: catImage || undefined,
+        order: Number(catOrder),
+        isActive: catIsActive,
+        metaTitle: catMetaTitle.trim() || undefined,
+        metaDescription: catMetaDescription.trim() || undefined,
+        metaKeywords: catMetaKeywords.trim() || undefined,
+      };
+
+      if (editingCategory) {
+        await updateCategory({
+          id: editingCategory._id,
+          ...payload,
+        });
+      } else {
+        await createCategory(payload);
+      }
+
+      setCategoryModalOpen(false);
+      resetCategoryForm();
+    } catch (err: any) {
+      setCategoryError(err?.message || "Kategori kaydedilirken bir hata oluştu.");
+    }
+  };
+
+  const handleDeleteCategory = async (cat: any) => {
+    if (confirm(`'${cat.name}' kategorisini silmek istediğinizden emin misiniz?`)) {
+      try {
+        await deleteCategory({ id: cat._id });
+      } catch (err: any) {
+        alert(err?.message || "Kategori silinemedi. Bağlı ürünler olabilir.");
+      }
+    }
   };
 
   const handleSaveSettings = async (e: React.FormEvent) => {
@@ -231,7 +298,7 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
-      {/* Admin Top Navigation */}
+      {/* Admin Top Header */}
       <header className="bg-slate-900 text-white border-b border-slate-800 py-3.5 px-4 sm:px-6 lg:px-8 sticky top-0 z-30 shadow-md">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -258,7 +325,7 @@ export default function AdminPage() {
               className="bg-slate-800 text-xs border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700 cursor-pointer"
             >
               <RotateCw className="w-3.5 h-3.5 mr-1" />
-              <span>Veritabanını Doldur (Seed)</span>
+              <span>Veritabanını Yenile (Seed)</span>
             </Button>
 
             <Link href="/" target="_blank">
@@ -284,7 +351,19 @@ export default function AdminPage() {
             }`}
           >
             <Package className="w-4 h-4" />
-            <span>Ürün Yönetimi ({products ? products.length : 0})</span>
+            <span>Ürünler ({products ? products.length : 0})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("categories")}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
+              activeTab === "categories"
+                ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
+                : "bg-white text-slate-700 hover:bg-slate-200 border border-slate-200"
+            }`}
+          >
+            <Layers className="w-4 h-4" />
+            <span>Kategori Yönetimi ({categories ? categories.length : 0})</span>
           </button>
 
           <button
@@ -300,18 +379,6 @@ export default function AdminPage() {
           </button>
 
           <button
-            onClick={() => setActiveTab("categories")}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
-              activeTab === "categories"
-                ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
-                : "bg-white text-slate-700 hover:bg-slate-200 border border-slate-200"
-            }`}
-          >
-            <Layers className="w-4 h-4" />
-            <span>Kategoriler ({categories ? categories.length : 0})</span>
-          </button>
-
-          <button
             onClick={() => setActiveTab("settings")}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
               activeTab === "settings"
@@ -320,7 +387,7 @@ export default function AdminPage() {
             }`}
           >
             <Settings className="w-4 h-4" />
-            <span>Site Ayarları</span>
+            <span>İletişim & WhatsApp Ayarları</span>
           </button>
         </div>
 
@@ -331,7 +398,7 @@ export default function AdminPage() {
               <div className="relative flex-1 max-w-md">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <Input
-                  placeholder="OEM no, ürün adı veya marka ile ara..."
+                  placeholder="Ürün adı, OEM kod, marka veya etiket ara..."
                   value={searchProduct}
                   onChange={(e) => setSearchProduct(e.target.value)}
                   className="pl-9 h-10 text-xs bg-slate-50"
@@ -346,7 +413,7 @@ export default function AdminPage() {
                 className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs gap-1.5 h-10 rounded-xl"
               >
                 <Plus className="w-4 h-4" />
-                <span>Yeni Parça Ekle</span>
+                <span>Yeni Ürün Ekle</span>
               </Button>
             </div>
 
@@ -357,10 +424,12 @@ export default function AdminPage() {
                   <thead className="bg-slate-50 text-slate-700 font-extrabold uppercase text-[11px] border-b border-slate-200">
                     <tr>
                       <th className="p-3.5">Görsel</th>
-                      <th className="p-3.5">OEM / Parça No</th>
-                      <th className="p-3.5">Ürün Adı</th>
+                      <th className="p-3.5">Parça No (OEM)</th>
+                      <th className="p-3.5">Raf Kodu</th>
+                      <th className="p-3.5">Ürün Başlığı</th>
                       <th className="p-3.5">Kategori</th>
-                      <th className="p-3.5">Marka & Model</th>
+                      <th className="p-3.5">Araç Markası</th>
+                      <th className="p-3.5">Model / Yıl</th>
                       <th className="p-3.5">Durum</th>
                       <th className="p-3.5">Stok</th>
                       <th className="p-3.5 text-right">İşlemler</th>
@@ -373,16 +442,30 @@ export default function AdminPage() {
                           <td className="p-3">
                             <div className="w-12 h-12 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center">
                               {p.images?.[0] ? (
-                                <img src={p.images[0]} alt={p.title} className="w-full h-full object-cover" />
+                                <img src={p.images[0]} alt={p.title} className="w-full h-full object-contain" />
                               ) : (
                                 <Cpu className="w-5 h-5 text-slate-400" />
                               )}
                             </div>
                           </td>
                           <td className="p-3 font-mono font-bold text-blue-700">{p.oemNumber}</td>
+                          <td className="p-3">
+                            {p.shelfCode ? (
+                              <span className="font-mono font-bold text-[11px] px-2 py-0.5 rounded bg-amber-50 text-amber-900 border border-amber-200">
+                                {p.shelfCode}
+                              </span>
+                            ) : (
+                              <span className="text-slate-400 text-[10px]">-</span>
+                            )}
+                          </td>
                           <td className="p-3 font-bold text-slate-900 max-w-xs truncate">{p.title}</td>
-                          <td className="p-3 text-slate-600 font-medium">{p.categoryName}</td>
-                          <td className="p-3 text-slate-700 font-semibold">{p.brand} {p.model}</td>
+                          <td className="p-3">
+                            <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-semibold text-[11px]">
+                              {p.categoryName}
+                            </span>
+                          </td>
+                          <td className="p-3 text-slate-700 font-semibold">{p.brand}</td>
+                          <td className="p-3 text-slate-500 font-medium">{p.model || "-"}</td>
                           <td className="p-3">
                             <Badge variant="secondary" className="text-[10px] py-0">
                               {p.condition}
@@ -428,7 +511,7 @@ export default function AdminPage() {
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={8} className="p-8 text-center text-slate-500">
+                        <td colSpan={10} className="p-8 text-center text-slate-500">
                           Kayıtlı ürün bulunamadı.
                         </td>
                       </tr>
@@ -440,7 +523,83 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* TAB 2: INQUIRIES & WHATSAPP LEADS */}
+        {/* TAB 2: CATEGORIES FULL MANAGEMENT */}
+        {activeTab === "categories" && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+              <div>
+                <h3 className="font-black text-sm text-slate-900">Kategori Yönetimi</h3>
+                <p className="text-xs text-slate-500">
+                  Kategorileri ekleyin, düzenleyin veya kaldırın. Ürünler bu kategorilere bağlanır.
+                </p>
+              </div>
+
+              <Button
+                onClick={() => {
+                  resetCategoryForm();
+                  setCategoryModalOpen(true);
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs gap-1.5 h-10 rounded-xl"
+              >
+                <FolderPlus className="w-4 h-4" />
+                <span>Yeni Kategori Ekle</span>
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {categories?.map((cat) => (
+                <div
+                  key={cat._id}
+                  className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between gap-3 hover:border-blue-300 transition-all"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-14 h-14 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center shrink-0 p-1">
+                      {cat.image ? (
+                        <img src={cat.image} alt={cat.name} className="w-full h-full object-contain" />
+                      ) : (
+                        <Layers className="w-6 h-6 text-slate-400" />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="font-extrabold text-xs text-slate-900 truncate">{cat.name}</h4>
+                      <p className="text-[11px] text-slate-400 font-mono truncate">{cat.slug}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[10px] text-slate-500 font-bold">Sıra: {cat.order}</span>
+                        <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${cat.isActive ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"}`}>
+                          {cat.isActive ? "Aktif" : "Pasif"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleOpenEditCategory(cat)}
+                      className="h-8 w-8 p-0 text-slate-600 hover:text-blue-600"
+                      title="Düzenle"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Button>
+
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteCategory(cat)}
+                      className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                      title="Sil"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 3: INQUIRIES */}
         {activeTab === "inquiries" && (
           <div className="space-y-4">
             <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
@@ -519,36 +678,13 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* TAB 3: CATEGORIES MANAGEMENT */}
-        {activeTab === "categories" && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {categories?.map((cat) => (
-                <div key={cat._id} className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center shrink-0">
-                    {cat.image ? (
-                      <img src={cat.image} alt={cat.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <Layers className="w-6 h-6 text-slate-400" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-bold text-xs text-slate-900 truncate">{cat.name}</h4>
-                    <span className="text-[10px] text-slate-400">{cat.slug}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* TAB 4: SITE SETTINGS */}
+        {/* TAB 4: SETTINGS */}
         {activeTab === "settings" && (
           <div className="max-w-2xl bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-xs space-y-6">
             <div>
               <h3 className="text-lg font-black text-slate-900">İletişim & WhatsApp Ayarları</h3>
               <p className="text-xs text-slate-500">
-                Sitedeki WhatsApp sipariş butonu numaralarını ve iletişim bilgilerini güncelleyin.
+                Sitedeki WhatsApp sipariş numarası ve telefon bilgilerini güncelleyin.
               </p>
             </div>
 
@@ -562,7 +698,7 @@ export default function AdminPage() {
             <form onSubmit={handleSaveSettings} className="space-y-4 text-xs">
               <div>
                 <label className="font-bold text-slate-700 block mb-1">
-                  WhatsApp Sipariş Numarası (Ülke kodu ile, boşluksuz)
+                  WhatsApp Sipariş Numarası (Boşluksuz, Ülke kodu ile)
                 </label>
                 <Input
                   defaultValue={siteSettings?.whatsappNumber || "+905340653222"}
@@ -624,106 +760,90 @@ export default function AdminPage() {
         )}
       </div>
 
-      {/* Add / Edit Product Modal */}
+      {/* Product Add / Edit Modal (Complete Parts Model) */}
       <Dialog open={addProductModalOpen} onOpenChange={setAddProductModalOpen}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl font-black text-slate-900">
-              {editingProduct ? "Parçayı Düzenle" : "Yeni Oto Elektronik Parçası Ekle"}
+              {editingProduct ? "Ürünü Düzenle" : "Yeni Ürün Ekle"}
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
-              OEM kodları, araç uyumluluk bilgileri ve teknik detayları eksiksiz giriniz.
+              Oto elektronik parçanın tüm temel ve SEO bilgilerini giriniz.
             </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleSaveProduct} className="space-y-4 pt-2 text-xs">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">OEM Numarası *</label>
-                <Input
-                  required
-                  placeholder="Örn: 0281011234"
-                  value={oemNumber}
-                  onChange={(e) => setOemNumber(e.target.value.toUpperCase())}
-                  className="font-mono uppercase font-bold"
-                />
-              </div>
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Bosch / Siemens No</label>
-                <Input
-                  placeholder="Örn: 0281011234 veya SID807"
-                  value={boschNumber}
-                  onChange={(e) => setBoschNumber(e.target.value.toUpperCase())}
-                  className="font-mono uppercase"
-                />
-              </div>
-            </div>
-
             <div>
               <label className="font-bold text-slate-700 block mb-1">Ürün Başlığı *</label>
               <Input
                 required
-                placeholder="Örn: Bosch ECU VW Passat 2.0 TDI 2010 - 2014"
+                placeholder="Örn: Renault Motor Beyni ECU Sagem S113717205D Orijinal Çıkma Motor Kontrol Ünitesi"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Kategori</label>
-                <select
-                  value={categorySlug}
-                  onChange={(e) => {
-                    setCategorySlug(e.target.value);
-                    const matched = categories?.find((c) => c.slug === e.target.value);
-                    if (matched) setCategoryName(matched.name);
-                  }}
-                  className="w-full h-10 rounded-lg border border-slate-200 bg-white px-3 font-semibold text-slate-800"
-                >
-                  {categories?.map((c) => (
-                    <option key={c._id} value={c.slug}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
+                <label className="font-bold text-slate-700 block mb-1">Parça No / OEM Kodu *</label>
+                <Input
+                  required
+                  placeholder="Örn: S113717205D"
+                  value={oemNumber}
+                  onChange={(e) => setOemNumber(e.target.value.toUpperCase())}
+                  className="font-mono uppercase font-bold"
+                />
               </div>
 
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Araç Markası</label>
+                <label className="font-bold text-slate-700 block mb-1">Depo Raf Kodu</label>
+                <Input
+                  placeholder="Örn: RAF-R04"
+                  value={shelfCode}
+                  onChange={(e) => setShelfCode(e.target.value.toUpperCase())}
+                  className="font-mono uppercase font-semibold"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Araç Markası *</label>
                 <Input
                   required
-                  placeholder="Volkswagen, BMW..."
+                  placeholder="Renault, Volkswagen, BMW..."
                   value={brand}
                   onChange={(e) => setBrand(e.target.value)}
                 />
               </div>
 
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Model & Yıl</label>
+                <label className="font-bold text-slate-700 block mb-1">Model / Uyumluluk</label>
                 <Input
-                  required
-                  placeholder="Passat (2010 - 2014)"
+                  placeholder="Renault Modelleri (Genel)"
                   value={model}
                   onChange={(e) => setModel(e.target.value)}
                 />
               </div>
-            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Yakıt Tipi</label>
+                <label className="font-bold text-slate-700 block mb-1">Kategori / Parça Türü *</label>
                 <select
-                  value={fuelType}
-                  onChange={(e) => setFuelType(e.target.value)}
-                  className="w-full h-10 rounded-lg border border-slate-200 bg-white px-3 font-semibold text-slate-800"
+                  value={selectedCategoryId}
+                  onChange={(e) => setSelectedCategoryId(e.target.value)}
+                  className="w-full h-10 rounded-lg border border-slate-200 bg-white px-2.5 font-semibold text-slate-800"
+                  required
                 >
-                  <option value="Dizel">Dizel</option>
-                  <option value="Benzin">Benzin</option>
-                  <option value="Hibrit">Hibrit</option>
+                  {categories?.map((c) => (
+                    <option key={c._id} value={c._id}>
+                      {c.name}
+                    </option>
+                  ))}
                 </select>
               </div>
+            </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="font-bold text-slate-700 block mb-1">Durum</label>
                 <select
@@ -731,42 +851,93 @@ export default function AdminPage() {
                   onChange={(e) => setCondition(e.target.value)}
                   className="w-full h-10 rounded-lg border border-slate-200 bg-white px-3 font-semibold text-slate-800"
                 >
-                  <option value="Çıkma - Orijinal">Çıkma - Orijinal</option>
+                  <option value="Orijinal Çıkma">Orijinal Çıkma</option>
                   <option value="Sıfır - Orijinal">Sıfır - Orijinal</option>
                   <option value="Revizyonlu">Revizyonlu</option>
+                  <option value="Sıfırlanmış - Virgin">Sıfırlanmış - Virgin</option>
                 </select>
               </div>
 
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Garanti</label>
+                <label className="font-bold text-slate-700 block mb-1">Görsel URL Adresi</label>
                 <Input
-                  placeholder="3 Ay Garanti"
-                  value={warranty}
-                  onChange={(e) => setWarranty(e.target.value)}
+                  placeholder="/images/cat-ecu.jpg veya https://..."
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
                 />
               </div>
             </div>
 
             <div>
-              <label className="font-bold text-slate-700 block mb-1">Görsel URL Adresi</label>
-              <Input
-                placeholder="https://images.unsplash.com/..."
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-              />
-            </div>
-
-            <div>
-              <label className="font-bold text-slate-700 block mb-1">Açıklama</label>
+              <label className="font-bold text-slate-700 block mb-1">
+                Ürün Açıklaması & Kullanım Alanları
+              </label>
               <Textarea
-                placeholder="Ürün genel bilgisi, test raporu ve immobilizer durumu..."
+                placeholder="Motor kontrol ünitesi özellikleri, kullanım alanları, montaj uyarıları..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                rows={3}
+                rows={5}
               />
             </div>
 
-            <div className="flex items-center gap-6 pt-2">
+            {/* SEO & Meta Fields Section */}
+            <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+              <div className="flex items-center gap-1.5 text-blue-700 font-bold">
+                <Globe className="w-4 h-4" />
+                <span>SEO & Google Arama Ayarları</span>
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">SEO Bağlantısı (URL Slug)</label>
+                <Input
+                  placeholder="renault-sagem-s113717205d-motor-beyni-ecu"
+                  value={slug}
+                  onChange={(e) => setSlug(e.target.value.toLowerCase())}
+                  className="font-mono text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">Meta Başlığı</label>
+                <Input
+                  placeholder="Sagem S113717205D Renault Motor Beyni ECU Orijinal Çıkma | TMS İthalat"
+                  value={metaTitle}
+                  onChange={(e) => setMetaTitle(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">Meta Açıklaması</label>
+                <Input
+                  placeholder="Renault araçlar için Sagem S113717205D numaralı motor beyni ECU..."
+                  value={metaDescription}
+                  onChange={(e) => setMetaDescription(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">Meta Kelimeleri</label>
+                <Input
+                  placeholder="S113717205D, Renault motor beyni, Renault ECU, Sagem ECU"
+                  value={metaKeywords}
+                  onChange={(e) => setMetaKeywords(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1 flex items-center gap-1">
+                  <Tag className="w-3 h-3 text-slate-500" />
+                  <span>Ürün Etiketleri (Virgülle ayırın)</span>
+                </label>
+                <Input
+                  placeholder="S113717205D, Renault, Sagem, ECU, Motor Beyni, Çıkma Parça"
+                  value={tagsInput}
+                  onChange={(e) => setTagsInput(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="pt-1">
               <label className="flex items-center gap-2 font-bold text-slate-800 cursor-pointer">
                 <input
                   type="checkbox"
@@ -776,29 +947,9 @@ export default function AdminPage() {
                 />
                 <span>Stokta Var</span>
               </label>
-
-              <label className="flex items-center gap-2 font-bold text-slate-800 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={tested}
-                  onChange={(e) => setTested(e.target.checked)}
-                  className="w-4 h-4 rounded text-blue-600"
-                />
-                <span>Test Edildi</span>
-              </label>
-
-              <label className="flex items-center gap-2 font-bold text-slate-800 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={plugAndPlay}
-                  onChange={(e) => setPlugAndPlay(e.target.checked)}
-                  className="w-4 h-4 rounded text-blue-600"
-                />
-                <span>Tak & Çalıştır</span>
-              </label>
             </div>
 
-            <div className="pt-4 flex justify-end gap-2 border-t border-slate-100">
+            <div className="pt-3 flex justify-end gap-2 border-t border-slate-100">
               <Button
                 type="button"
                 variant="outline"
@@ -808,6 +959,143 @@ export default function AdminPage() {
               </Button>
               <Button type="submit" className="bg-blue-600 hover:bg-blue-700 font-bold px-6">
                 {editingProduct ? "Güncelle" : "Kaydet"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Category Add / Edit Modal */}
+      <Dialog open={categoryModalOpen} onOpenChange={setCategoryModalOpen}>
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-black text-slate-900">
+              {editingCategory ? "Kategoriyi Düzenle" : "Yeni Kategori Ekle"}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              Kategori adını, slug, görselini ve SEO ayarlarını tanımlayın.
+            </DialogDescription>
+          </DialogHeader>
+
+          {categoryError && (
+            <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-xs font-semibold">
+              {categoryError}
+            </div>
+          )}
+
+          <form onSubmit={handleSaveCategory} className="space-y-3.5 pt-2 text-xs">
+            <div>
+              <label className="font-bold text-slate-700 block mb-1">Kategori Adı *</label>
+              <Input
+                required
+                placeholder="Örn: Motor Beyinleri (ECU)"
+                value={catName}
+                onChange={(e) => {
+                  setCatName(e.target.value);
+                  if (!editingCategory) {
+                    setCatSlug(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, "-"));
+                  }
+                }}
+              />
+            </div>
+
+            <div>
+              <label className="font-bold text-slate-700 block mb-1">URL Slug *</label>
+              <Input
+                required
+                placeholder="motor-beyinleri-ecu"
+                value={catSlug}
+                onChange={(e) => setCatSlug(e.target.value.toLowerCase())}
+                className="font-mono"
+              />
+            </div>
+
+            <div>
+              <label className="font-bold text-slate-700 block mb-1">Görsel URL</label>
+              <Input
+                placeholder="/images/cat-ecu.jpg"
+                value={catImage}
+                onChange={(e) => setCatImage(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className="font-bold text-slate-700 block mb-1">Açıklama</label>
+              <Input
+                placeholder="Kategori hakkında kısa açıklama..."
+                value={catDescription}
+                onChange={(e) => setCatDescription(e.target.value)}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 items-center">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Sıralama (Order)</label>
+                <Input
+                  type="number"
+                  value={catOrder}
+                  onChange={(e) => setCatOrder(Number(e.target.value))}
+                />
+              </div>
+
+              <div className="pt-4">
+                <label className="flex items-center gap-2 font-bold text-slate-800 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={catIsActive}
+                    onChange={(e) => setCatIsActive(e.target.checked)}
+                    className="w-4 h-4 rounded text-blue-600"
+                  />
+                  <span>Kategori Aktif</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Category SEO Section */}
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5">
+              <div className="flex items-center gap-1.5 text-blue-700 font-bold">
+                <Globe className="w-3.5 h-3.5" />
+                <span>SEO Ayarları (Opsiyonel)</span>
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">Kategori Meta Başlığı</label>
+                <Input
+                  placeholder="Motor Beyinleri (ECU) Modülleri ve Fiyatları | TMS İthalat"
+                  value={catMetaTitle}
+                  onChange={(e) => setCatMetaTitle(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">Kategori Meta Açıklaması</label>
+                <Input
+                  placeholder="En uygun fiyatlı orijinal çıkma ve sıfır motor beyinleri..."
+                  value={catMetaDescription}
+                  onChange={(e) => setCatMetaDescription(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">Kategori SEO Kelimeleri</label>
+                <Input
+                  placeholder="motor beyni, ecu, çıkma motor beyni, bosch ecu"
+                  value={catMetaKeywords}
+                  onChange={(e) => setCatMetaKeywords(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="pt-3 flex justify-end gap-2 border-t border-slate-100">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setCategoryModalOpen(false)}
+              >
+                İptal
+              </Button>
+              <Button type="submit" className="bg-blue-600 hover:bg-blue-700 font-bold px-6">
+                {editingCategory ? "Güncelle" : "Kategori Oluştur"}
               </Button>
             </div>
           </form>

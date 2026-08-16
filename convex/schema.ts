@@ -5,85 +5,69 @@ import { v } from "convex/values";
 export default defineSchema({
   ...authTables,
 
-  // Kategori Tablosu
+  // 1. Kategoriler Tablosu
   categories: defineTable({
-    slug: v.string(),
-    name: v.string(),
-    description: v.string(),
-    image: v.string(),
+    name: v.string(), // Kategori Adı (Örn: Motor Beyinleri (ECU))
+    slug: v.string(), // URL slug (Örn: motor-beyinleri-ecu)
+    description: v.optional(v.string()),
+    image: v.optional(v.string()),
     order: v.number(),
-    featured: v.boolean(),
-    itemCount: v.optional(v.number()),
+    isActive: v.boolean(),
+    // SEO & Meta Alanları
+    metaTitle: v.optional(v.string()),
+    metaDescription: v.optional(v.string()),
+    metaKeywords: v.optional(v.string()),
+    createdAt: v.optional(v.number()),
+    updatedAt: v.optional(v.number()),
   })
     .index("by_slug", ["slug"])
-    .index("by_featured", ["featured"])
-    .index("by_order", ["order"]),
+    .index("by_order", ["order"])
+    .index("by_isActive", ["isActive"]),
 
-  // Araç Markaları
+  // 2. Araç Markaları Tablosu
   brands: defineTable({
-    slug: v.string(),
-    name: v.string(),
+    name: v.string(), // Marka Adı (Örn: Volkswagen, Mercedes-Benz)
+    slug: v.string(), // URL slug (Örn: volkswagen)
     logoUrl: v.optional(v.string()),
     popular: v.boolean(),
     order: v.number(),
+    isActive: v.boolean(),
   })
     .index("by_slug", ["slug"])
     .index("by_popular", ["popular"])
     .index("by_order", ["order"]),
 
-  // Ürünler Tablosu (Oto Elektronik Modülleri / Motor Beyinleri / vb.)
+  // 3. Ürünler Tablosu (Tam Kapsamlı ve Temiz Oto Elektronik Şeması)
   products: defineTable({
-    title: v.string(),
-    slug: v.string(),
-    oemNumber: v.string(),
-    boschNumber: v.optional(v.string()),
-    siemensNumber: v.optional(v.string()),
-    otherNumbers: v.optional(v.array(v.string())),
-    categorySlug: v.string(),
-    categoryName: v.string(),
-    brand: v.string(),
-    model: v.string(),
-    generation: v.optional(v.string()),
-    yearRange: v.string(),
-    fuelType: v.string(), // Dizel, Benzin, Hibrit, Elektrik
-    condition: v.string(), // Çıkma - Orijinal, Sıfır - Orijinal, Revizyonlu
-    warranty: v.string(), // 3 Ay Garanti, 6 Ay Garanti, 1 Yıl Garanti
-    tested: v.boolean(),
-    plugAndPlay: v.boolean(),
-    pinCount: v.optional(v.string()),
-    voltage: v.optional(v.string()),
-    weight: v.optional(v.string()),
-    dimensions: v.optional(v.string()),
-    softwareVersion: v.optional(v.string()),
-    hardwareVersion: v.optional(v.string()),
-    inStock: v.boolean(),
-    price: v.optional(v.number()),
-    priceText: v.optional(v.string()), // "Fiyat Sorunuz" or "4.500 ₺"
-    description: v.string(),
-    images: v.array(v.string()),
-    compatibleVehicles: v.array(
-      v.object({
-        brand: v.string(),
-        model: v.string(),
-        engine: v.string(),
-        yearRange: v.string(),
-        oemNumber: v.string(),
-      })
-    ),
-    installationNotes: v.optional(v.string()),
-    featured: v.boolean(),
-    views: v.optional(v.number()),
+    title: v.string(), // Ürün Başlığı (Örn: Renault Motor Beyni ECU Sagem S113717205D Orijinal Çıkma)
+    slug: v.string(), // SEO Bağlantısı / URL slug (Örn: renault-sagem-s113717205d-motor-beyni-ecu)
+    oemNumber: v.string(), // Parça No / OEM Kodu (Örn: S113717205D)
+    shelfCode: v.optional(v.string()), // Depo Raf Kodu (Örn: RAF-B08)
+    categoryId: v.id("categories"), // Kategori / Parça Türü (Foreign Key -> categories._id)
+    brand: v.string(), // Araç Markası (Örn: Renault, Volkswagen, Mercedes-Benz)
+    model: v.optional(v.string()), // Model / Yıl (Örn: Megane 2, Clio 3 veya Genel Uyumlu)
+    condition: v.string(), // Durum ("Orijinal Çıkma", "Sıfır - Orijinal", "Revizyonlu")
+    inStock: v.boolean(), // Stok Durumu: true / false
+    description: v.string(), // Detaylı Ürün Açıklaması & Kullanım Alanları
+    images: v.array(v.string()), // Ürün Görselleri
+    
+    // SEO & Meta Alanları
+    metaTitle: v.optional(v.string()), // Meta Başlığı
+    metaDescription: v.optional(v.string()), // Meta Açıklaması
+    metaKeywords: v.optional(v.string()), // Meta Kelimeleri (virgülle ayrılmış)
+    tags: v.optional(v.array(v.string())), // Ürün Etiketleri (Tags)
+
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_slug", ["slug"])
     .index("by_oemNumber", ["oemNumber"])
-    .index("by_categorySlug", ["categorySlug"])
+    .index("by_shelfCode", ["shelfCode"])
+    .index("by_categoryId", ["categoryId"])
     .index("by_brand", ["brand"])
-    .index("by_featured", ["featured"])
     .index("by_inStock", ["inStock"]),
 
-  // WhatsApp Talepleri & Teklif / İletişim Formları
+  // 4. WhatsApp Talepleri & Teklif / İletişim Formları
   inquiries: defineTable({
     productId: v.optional(v.id("products")),
     productTitle: v.optional(v.string()),
@@ -101,7 +85,7 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_type", ["type"]),
 
-  // Site Ayarları
+  // 5. Site Genel Ayarları
   siteSettings: defineTable({
     siteName: v.string(),
     slogan: v.string(),

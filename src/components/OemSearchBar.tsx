@@ -186,7 +186,7 @@ export default function OemSearchBar({
                         {product.condition}
                       </span>
                       <span>•</span>
-                      <span>{product.yearRange}</span>
+                      <span>{product.inStock ? "Stokta Var" : "Temin Edilir"}</span>
                     </div>
                   </div>
 

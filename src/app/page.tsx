@@ -26,7 +26,7 @@ import { generateWhatsAppLink } from "@/lib/utils";
 export default function HomePage() {
   const [searchInput, setSearchInput] = useState("");
 
-  const categories = useQuery(api.categories.list);
+  const categories = useQuery(api.categories.list, {});
   const settings = useQuery(api.siteSettings.get);
   const seedAll = useMutation(api.seed.seedAll);
 

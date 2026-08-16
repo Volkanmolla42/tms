@@ -25,9 +25,13 @@ export const create = mutation({
     logoUrl: v.optional(v.string()),
     popular: v.boolean(),
     order: v.number(),
+    isActive: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("brands", args);
+    return await ctx.db.insert("brands", {
+      ...args,
+      isActive: args.isActive ?? true,
+    });
   },
 });
 

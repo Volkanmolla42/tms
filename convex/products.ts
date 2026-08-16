@@ -1,31 +1,43 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { Doc } from "./_generated/dataModel";
 
 export const list = query({
   args: {
     categorySlug: v.optional(v.string()),
+    categoryId: v.optional(v.id("categories")),
     brand: v.optional(v.string()),
     condition: v.optional(v.string()),
-    fuelType: v.optional(v.string()),
     inStockOnly: v.optional(v.boolean()),
     searchTerm: v.optional(v.string()),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    let items;
-    if (args.categorySlug) {
+    let items: Doc<"products">[] = [];
+
+    if (args.categoryId) {
       items = await ctx.db
         .query("products")
-        .withIndex("by_categorySlug", (builder) =>
-          builder.eq("categorySlug", args.categorySlug!)
-        )
+        .withIndex("by_categoryId", (q) => q.eq("categoryId", args.categoryId!))
         .take(args.limit ?? 100);
+    } else if (args.categorySlug) {
+      const category = await ctx.db
+        .query("categories")
+        .withIndex("by_slug", (q) => q.eq("slug", args.categorySlug!))
+        .first();
+
+      if (category) {
+        items = await ctx.db
+          .query("products")
+          .withIndex("by_categoryId", (q) => q.eq("categoryId", category._id))
+          .take(args.limit ?? 100);
+      } else {
+        items = [];
+      }
     } else if (args.brand) {
       items = await ctx.db
         .query("products")
-        .withIndex("by_brand", (builder) =>
-          builder.eq("brand", args.brand!)
-        )
+        .withIndex("by_brand", (q) => q.eq("brand", args.brand!))
         .take(args.limit ?? 100);
     } else {
       items = await ctx.db.query("products").take(args.limit ?? 100);
@@ -33,15 +45,9 @@ export const list = query({
 
     let filtered = items;
 
-    if (args.condition) {
+    if (args.condition && args.condition !== "Tümü") {
       filtered = filtered.filter((p) =>
         p.condition.toLowerCase().includes(args.condition!.toLowerCase())
-      );
-    }
-
-    if (args.fuelType) {
-      filtered = filtered.filter(
-        (p) => p.fuelType.toLowerCase() === args.fuelType!.toLowerCase()
       );
     }
 
@@ -55,61 +61,98 @@ export const list = query({
 
       filtered = filtered.filter((p) => {
         const oemClean = p.oemNumber.toLowerCase().replace(/[^a-z0-9]/g, "");
-        const boschClean = (p.boschNumber || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-        const siemensClean = (p.siemensNumber || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-        const otherClean = (p.otherNumbers || []).map((n) => n.toLowerCase().replace(/[^a-z0-9]/g, ""));
+        const shelfClean = (p.shelfCode || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+        const hasTagMatch = p.tags?.some((t) => t.toLowerCase().includes(term));
 
         return (
           p.title.toLowerCase().includes(term) ||
           p.oemNumber.toLowerCase().includes(term) ||
-          (cleanTerm.length >= 3 && oemClean.includes(cleanTerm)) ||
-          (cleanTerm.length >= 3 && boschClean.includes(cleanTerm)) ||
-          (cleanTerm.length >= 3 && siemensClean.includes(cleanTerm)) ||
-          (cleanTerm.length >= 3 && otherClean.some((c) => c.includes(cleanTerm))) ||
+          (p.shelfCode && p.shelfCode.toLowerCase().includes(term)) ||
+          (cleanTerm.length >= 2 && oemClean.includes(cleanTerm)) ||
+          (cleanTerm.length >= 2 && shelfClean.includes(cleanTerm)) ||
           p.brand.toLowerCase().includes(term) ||
-          p.model.toLowerCase().includes(term) ||
-          p.categoryName.toLowerCase().includes(term) ||
-          (p.otherNumbers && p.otherNumbers.some((n) => n.toLowerCase().includes(term)))
+          (p.model && p.model.toLowerCase().includes(term)) ||
+          p.description.toLowerCase().includes(term) ||
+          (p.metaKeywords && p.metaKeywords.toLowerCase().includes(term)) ||
+          hasTagMatch
         );
       });
     }
 
-    return filtered;
+    // Populate relational category details for each product
+    return await Promise.all(
+      filtered.map(async (p) => {
+        const cat = await ctx.db.get(p.categoryId);
+        return {
+          ...p,
+          categoryName: cat?.name || "Oto Elektronik",
+          categorySlug: cat?.slug || "diger",
+          category: cat ? { _id: cat._id, name: cat.name, slug: cat.slug } : null,
+        };
+      })
+    );
   },
 });
 
 export const getFeatured = query({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
-    return await ctx.db
+    const items = await ctx.db
       .query("products")
-      .withIndex("by_featured", (q) => q.eq("featured", true))
       .take(args.limit ?? 12);
+
+    return await Promise.all(
+      items.map(async (p) => {
+        const cat = await ctx.db.get(p.categoryId);
+        return {
+          ...p,
+          categoryName: cat?.name || "Oto Elektronik",
+          categorySlug: cat?.slug || "diger",
+        };
+      })
+    );
   },
 });
 
 export const getBySlug = query({
   args: { slug: v.string() },
   handler: async (ctx, args) => {
-    return await ctx.db
+    const product = await ctx.db
       .query("products")
       .withIndex("by_slug", (q) => q.eq("slug", args.slug))
       .first();
+
+    if (!product) return null;
+
+    const cat = await ctx.db.get(product.categoryId);
+    return {
+      ...product,
+      categoryName: cat?.name || "Oto Elektronik",
+      categorySlug: cat?.slug || "diger",
+      category: cat ? { _id: cat._id, name: cat.name, slug: cat.slug } : null,
+    };
   },
 });
 
 export const getByOem = query({
   args: { oemNumber: v.string() },
   handler: async (ctx, args) => {
-    const cleanOem = args.oemNumber.trim().toLowerCase();
+    const cleanOem = args.oemNumber.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
     const all = await ctx.db.query("products").take(200);
-    return all.filter(
-      (p) =>
-        p.oemNumber.toLowerCase().includes(cleanOem) ||
-        (p.boschNumber && p.boschNumber.toLowerCase().includes(cleanOem)) ||
-        (p.siemensNumber && p.siemensNumber.toLowerCase().includes(cleanOem)) ||
-        (p.otherNumbers &&
-          p.otherNumbers.some((num) => num.toLowerCase().includes(cleanOem)))
+    const matched = all.filter((p) => {
+      const pOem = p.oemNumber.toLowerCase().replace(/[^a-z0-9]/g, "");
+      return pOem.includes(cleanOem) || p.title.toLowerCase().includes(cleanOem);
+    });
+
+    return await Promise.all(
+      matched.map(async (p) => {
+        const cat = await ctx.db.get(p.categoryId);
+        return {
+          ...p,
+          categoryName: cat?.name || "Oto Elektronik",
+          categorySlug: cat?.slug || "diger",
+        };
+      })
     );
   },
 });
@@ -125,43 +168,36 @@ export const search = query({
     const cleanTerm = term.replace(/[^a-z0-9]/g, "");
 
     const all = await ctx.db.query("products").take(200);
-    return all
+    const filtered = all
       .filter((p) => {
         const oemClean = p.oemNumber.toLowerCase().replace(/[^a-z0-9]/g, "");
-        const boschClean = (p.boschNumber || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-        const siemensClean = (p.siemensNumber || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-        const otherClean = (p.otherNumbers || []).map((n) => n.toLowerCase().replace(/[^a-z0-9]/g, ""));
+        const shelfClean = (p.shelfCode || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+        const hasTagMatch = p.tags?.some((t) => t.toLowerCase().includes(term));
 
         return (
           p.title.toLowerCase().includes(term) ||
           p.oemNumber.toLowerCase().includes(term) ||
-          (cleanTerm.length >= 3 && oemClean.includes(cleanTerm)) ||
-          (cleanTerm.length >= 3 && boschClean.includes(cleanTerm)) ||
-          (cleanTerm.length >= 3 && siemensClean.includes(cleanTerm)) ||
-          (cleanTerm.length >= 3 && otherClean.some((c) => c.includes(cleanTerm))) ||
+          (p.shelfCode && p.shelfCode.toLowerCase().includes(term)) ||
+          (cleanTerm.length >= 2 && oemClean.includes(cleanTerm)) ||
+          (cleanTerm.length >= 2 && shelfClean.includes(cleanTerm)) ||
           p.brand.toLowerCase().includes(term) ||
-          p.model.toLowerCase().includes(term) ||
-          p.categoryName.toLowerCase().includes(term) ||
-          (p.otherNumbers && p.otherNumbers.some((n) => n.toLowerCase().includes(term)))
+          (p.model && p.model.toLowerCase().includes(term)) ||
+          (p.metaKeywords && p.metaKeywords.toLowerCase().includes(term)) ||
+          hasTagMatch
         );
       })
       .slice(0, args.limit ?? 10);
-  },
-});
 
-export const getRelated = query({
-  args: {
-    categorySlug: v.string(),
-    currentSlug: v.string(),
-    limit: v.optional(v.number()),
-  },
-  handler: async (ctx, args) => {
-    const items = await ctx.db
-      .query("products")
-      .withIndex("by_categorySlug", (q) => q.eq("categorySlug", args.categorySlug))
-      .take((args.limit ?? 4) + 1);
-
-    return items.filter((p) => p.slug !== args.currentSlug).slice(0, args.limit ?? 4);
+    return await Promise.all(
+      filtered.map(async (p) => {
+        const cat = await ctx.db.get(p.categoryId);
+        return {
+          ...p,
+          categoryName: cat?.name || "Oto Elektronik",
+          categorySlug: cat?.slug || "diger",
+        };
+      })
+    );
   },
 });
 
@@ -170,48 +206,23 @@ export const create = mutation({
     title: v.string(),
     slug: v.string(),
     oemNumber: v.string(),
-    boschNumber: v.optional(v.string()),
-    siemensNumber: v.optional(v.string()),
-    otherNumbers: v.optional(v.array(v.string())),
-    categorySlug: v.string(),
-    categoryName: v.string(),
+    shelfCode: v.optional(v.string()),
+    categoryId: v.id("categories"),
     brand: v.string(),
-    model: v.string(),
-    generation: v.optional(v.string()),
-    yearRange: v.string(),
-    fuelType: v.string(),
+    model: v.optional(v.string()),
     condition: v.string(),
-    warranty: v.string(),
-    tested: v.boolean(),
-    plugAndPlay: v.boolean(),
-    pinCount: v.optional(v.string()),
-    voltage: v.optional(v.string()),
-    weight: v.optional(v.string()),
-    dimensions: v.optional(v.string()),
-    softwareVersion: v.optional(v.string()),
-    hardwareVersion: v.optional(v.string()),
     inStock: v.boolean(),
-    price: v.optional(v.number()),
-    priceText: v.optional(v.string()),
     description: v.string(),
     images: v.array(v.string()),
-    compatibleVehicles: v.array(
-      v.object({
-        brand: v.string(),
-        model: v.string(),
-        engine: v.string(),
-        yearRange: v.string(),
-        oemNumber: v.string(),
-      })
-    ),
-    installationNotes: v.optional(v.string()),
-    featured: v.boolean(),
+    metaTitle: v.optional(v.string()),
+    metaDescription: v.optional(v.string()),
+    metaKeywords: v.optional(v.string()),
+    tags: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
     return await ctx.db.insert("products", {
       ...args,
-      views: 0,
       createdAt: now,
       updatedAt: now,
     });
@@ -224,42 +235,18 @@ export const update = mutation({
     title: v.string(),
     slug: v.string(),
     oemNumber: v.string(),
-    boschNumber: v.optional(v.string()),
-    siemensNumber: v.optional(v.string()),
-    otherNumbers: v.optional(v.array(v.string())),
-    categorySlug: v.string(),
-    categoryName: v.string(),
+    shelfCode: v.optional(v.string()),
+    categoryId: v.id("categories"),
     brand: v.string(),
-    model: v.string(),
-    generation: v.optional(v.string()),
-    yearRange: v.string(),
-    fuelType: v.string(),
+    model: v.optional(v.string()),
     condition: v.string(),
-    warranty: v.string(),
-    tested: v.boolean(),
-    plugAndPlay: v.boolean(),
-    pinCount: v.optional(v.string()),
-    voltage: v.optional(v.string()),
-    weight: v.optional(v.string()),
-    dimensions: v.optional(v.string()),
-    softwareVersion: v.optional(v.string()),
-    hardwareVersion: v.optional(v.string()),
     inStock: v.boolean(),
-    price: v.optional(v.number()),
-    priceText: v.optional(v.string()),
     description: v.string(),
     images: v.array(v.string()),
-    compatibleVehicles: v.array(
-      v.object({
-        brand: v.string(),
-        model: v.string(),
-        engine: v.string(),
-        yearRange: v.string(),
-        oemNumber: v.string(),
-      })
-    ),
-    installationNotes: v.optional(v.string()),
-    featured: v.boolean(),
+    metaTitle: v.optional(v.string()),
+    metaDescription: v.optional(v.string()),
+    metaKeywords: v.optional(v.string()),
+    tags: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
     const { id, ...fields } = args;

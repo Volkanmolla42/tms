@@ -49,14 +49,13 @@ function ProductCatalogContent() {
   ];
 
   // Fetch categories from Convex
-  const categories = useQuery(api.categories.list);
+  const categories = useQuery(api.categories.list, {});
 
   // Fetch products from Convex
   const rawProducts = useQuery(api.products.list, {
     categorySlug: selectedCategory === "all" ? undefined : selectedCategory,
     brand: selectedBrand && selectedBrand !== "Tümü" ? selectedBrand : undefined,
     condition: selectedCondition && selectedCondition !== "Tümü" ? selectedCondition : undefined,
-    fuelType: selectedFuel && selectedFuel !== "Tümü" ? selectedFuel : undefined,
     inStockOnly: selectedStock === "Stokta" ? true : undefined,
     searchTerm: activeSearch || undefined,
   });
