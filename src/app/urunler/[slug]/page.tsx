@@ -5,7 +5,6 @@ import Link from "next/link";
 import {
   ChevronRight,
   ChevronLeft,
-  MessageCircle,
   Phone,
   RotateCw,
   Check,
@@ -21,9 +20,9 @@ import {
   Wrench,
   CheckCircle2,
 } from "lucide-react";
+import WhatsAppIcon from "@/components/WhatsAppIcon";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import FloatingWhatsApp from "@/components/FloatingWhatsApp";
 import ProductCard from "@/components/ProductCard";
 import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
@@ -400,7 +399,7 @@ export default function ProductDetailPage({ params }: PageProps) {
                     size="lg"
                     className="w-full text-xs font-black tracking-wider py-6 rounded-xl shadow-md shadow-emerald-600/20"
                   >
-                    <MessageCircle className="w-5 h-5 fill-white mr-1.5" />
+                    <WhatsAppIcon className="w-5 h-5 fill-white text-white mr-1.5" />
                     <span>WHATSAPP İLE FİYAT &amp; STOK SOR</span>
                   </Button>
                 </a>
@@ -540,8 +539,8 @@ export default function ProductDetailPage({ params }: PageProps) {
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    <Button variant="outline" size="sm" className="font-bold text-xs">
-                      <MessageCircle className="w-3.5 h-3.5 mr-1 text-emerald-600" />
+                    <Button variant="outline" size="sm" className="font-bold text-xs text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50 border-emerald-300">
+                      <WhatsAppIcon className="w-3.5 h-3.5 mr-1.5 fill-emerald-600 text-emerald-600" />
                       <span>Şasi No ile Uyumluluk Teyidi Al</span>
                     </Button>
                   </a>
@@ -637,7 +636,6 @@ export default function ProductDetailPage({ params }: PageProps) {
         </DialogContent>
       </Dialog>
 
-      <FloatingWhatsApp />
       <Footer />
     </div>
   );

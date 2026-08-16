@@ -4,6 +4,7 @@ import "./globals.css";
 import { ConvexClientProvider } from "./ConvexClientProvider";
 import { ConvexAuthNextjsServerProvider } from "@convex-dev/auth/nextjs/server";
 import LiveChatWidget from "@/components/LiveChatWidget";
+import FloatingWhatsApp from "@/components/FloatingWhatsApp";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -35,6 +36,7 @@ export default function RootLayout({
           <ConvexClientProvider>
             {children}
             <LiveChatWidget />
+            <FloatingWhatsApp />
           </ConvexClientProvider>
         </body>
       </html>

@@ -15,10 +15,18 @@ import {
 } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import FloatingWhatsApp from "@/components/FloatingWhatsApp";
 import { Button } from "@/components/ui/button";
 
+import { useQuery } from "convex/react";
+import { api } from "../../../convex/_generated/api";
+
 export default function KurumsalPage() {
+  const settings = useQuery(api.siteSettings.get);
+
+  const siteName = settings?.siteName || "TMS İthalat";
+  const experienceYears = settings?.stats?.experienceYears || "20+";
+  const productsCount = settings?.stats?.productsCount || "15.000+";
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
       <Header />
@@ -38,12 +46,12 @@ export default function KurumsalPage() {
       {/* Hero Banner */}
       <section className="bg-[#070e1a] text-white py-16 px-4 sm:px-6 lg:px-8 tech-grid-dark relative overflow-hidden">
         <div className="max-w-4xl mx-auto text-center space-y-4 relative z-10">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-950 border border-blue-500/30 text-blue-300 text-xs font-bold">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-950 border border-blue-500/30 text-blue-300 text-xs font-bold uppercase">
             <Building className="w-3.5 h-3.5" />
-            <span>TMS İTHALAT HAKKINDA</span>
+            <span>{siteName.toUpperCase()} HAKKINDA</span>
           </div>
           <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-white">
-            20 Yıllık Tecrübe ile{" "}
+            {experienceYears} Yıllık Tecrübe ile{" "}
             <span className="text-blue-400">Oto Elektronik Güvencesi</span>
           </h1>
           <p className="text-sm sm:text-base text-slate-300 max-w-2xl mx-auto leading-relaxed">
@@ -61,15 +69,15 @@ export default function KurumsalPage() {
               Hakkımızda
             </h2>
             <p className="text-sm text-slate-600 leading-relaxed">
-              <strong>TMS İthalat</strong>, otomotiv elektronik sektöründe 20 yılı aşkın tecrübesiyle motor kontrol üniteleri (ECU), ABS/ESP fren modülleri, Airbag güvenlik beyinleri, BCM/BSI gövde modülleri ve şanzıman mekatronik beyinleri tedariğinde Türkiye&apos;nin öncü kuruluşlarındandır.
+              <strong>{siteName}</strong>, otomotiv elektronik sektöründe {experienceYears} yılı aşkın tecrübesiyle motor kontrol üniteleri (ECU), ABS/ESP fren modülleri, Airbag güvenlik beyinleri, BCM/BSI gövde modülleri ve şanzıman mekatronik beyinleri tedariğinde Türkiye&apos;nin öncü kuruluşlarındandır.
             </p>
             <p className="text-sm text-slate-600 leading-relaxed">
-              Geniş merkez depomuzda yer alan 15.000&apos;in üzerinde hazır stok ile arızalı veya hasarlı araçların en kısa sürede orijinal parçalarına kavuşmasını sağlıyoruz.
+              Geniş merkez depomuzda yer alan {productsCount}&apos;in üzerinde hazır stok ile arızalı veya hasarlı araçların en kısa sürede orijinal parçalarına kavuşmasını sağlıyoruz.
             </p>
             <div className="pt-2 flex flex-wrap gap-2 text-xs">
               <span className="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-800 font-bold border border-blue-100 flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4 text-blue-600" />
-                15.000+ Stoklu Ürün
+                {productsCount} Stoklu Ürün
               </span>
               <span className="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-800 font-bold border border-emerald-100 flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4 text-emerald-600" />
@@ -153,7 +161,6 @@ export default function KurumsalPage() {
         </div>
       </div>
 
-      <FloatingWhatsApp />
       <Footer />
     </div>
   );

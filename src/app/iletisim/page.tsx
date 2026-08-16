@@ -6,15 +6,14 @@ import {
   Mail,
   MapPin,
   Clock,
-  MessageCircle,
   ChevronRight,
   Home,
   ExternalLink,
   Truck,
 } from "lucide-react";
+import WhatsAppIcon from "@/components/WhatsAppIcon";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import FloatingWhatsApp from "@/components/FloatingWhatsApp";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { generateWhatsAppLink } from "@/lib/utils";
@@ -74,7 +73,7 @@ export default function IletisimPage() {
           >
             <div className="space-y-3">
               <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
-                <MessageCircle className="w-6 h-6 fill-white text-white" />
+                <WhatsAppIcon className="w-6 h-6 fill-white text-white" />
               </div>
               <h3 className="text-lg font-black tracking-tight">WhatsApp Hızlı Destek</h3>
               <p className="text-xs text-emerald-100 leading-relaxed">
@@ -193,7 +192,6 @@ export default function IletisimPage() {
         </div>
       </div>
 
-      <FloatingWhatsApp />
       <Footer />
     </div>
   );

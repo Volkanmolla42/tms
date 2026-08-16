@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import RoutartLogo from "./RoutartLogo";
 import {
   ShieldCheck,
   CheckCircle2,
@@ -9,19 +10,17 @@ import {
   Phone,
   Mail,
   MapPin,
-  MessageCircle,
 } from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { generateWhatsAppLink } from "@/lib/utils";
 
 export default function Footer() {
   const settings = useQuery(api.siteSettings.get);
+  const categories = useQuery(api.categories.list, { onlyActive: true });
 
   const phone = settings?.phone || "(0212) 861 32 72";
   const email = settings?.email || "info@tmsithalat.com";
   const address = settings?.address || "Hürriyet, İstiklal Cd. No:102, 34537 Büyükçekmece/İstanbul";
-  const whatsappNumber = settings?.whatsappNumber || "905321234567";
 
   return (
     <footer className="w-full bg-[#050b14] text-slate-300 border-t border-slate-900 mt-auto">
@@ -73,7 +72,7 @@ export default function Footer() {
       {/* 2. Main 4-Column Footer */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-          {/* Column 1: Logo & WhatsApp */}
+          {/* Column 1: Logo & Slogan */}
           <div className="space-y-4">
             <Link href="/" className="inline-block">
               <img
@@ -83,21 +82,8 @@ export default function Footer() {
               />
             </Link>
             <p className="text-xs text-slate-400 leading-relaxed">
-              Oto elektronik parçalar konusunda güvenilir çözüm ortağınız.
+              {settings?.slogan || "Oto elektronik parçalar konusunda güvenilir çözüm ortağınız."}
             </p>
-
-            {/* WhatsApp Direct Link */}
-            <div className="pt-1">
-              <a
-                href={generateWhatsAppLink(whatsappNumber, undefined, undefined, "Merhaba TMS İthalat, oto elektronik parça talebinde bulunmak istiyorum.")}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs tracking-wide shadow-lg shadow-emerald-900/40 transition-all cursor-pointer transform hover:-translate-y-0.5"
-              >
-                <MessageCircle className="w-4 h-4 fill-emerald-100/20" />
-                <span>WhatsApp Destek Hattı</span>
-              </a>
-            </div>
           </div>
 
           {/* Column 2: KURUMSAL */}
@@ -107,22 +93,28 @@ export default function Footer() {
             </h4>
             <ul className="space-y-2 text-xs text-slate-400">
               <li><Link href="/kurumsal" className="hover:text-white transition-colors">Hakkımızda</Link></li>
-              <li><Link href="/kurumsal#misyon" className="hover:text-white transition-colors">Vizyon & Misyon</Link></li>
+              <li><Link href="/kurumsal#misyon" className="hover:text-white transition-colors">Vizyon &amp; Misyon</Link></li>
               <li><Link href="/kurumsal#kalite" className="hover:text-white transition-colors">Kalite Politikamız</Link></li>
               <li><Link href="/kurumsal" className="hover:text-white transition-colors">İnsan Kaynakları</Link></li>
             </ul>
           </div>
 
-          {/* Column 3: ÜRÜNLER */}
+          {/* Column 3: ÜRÜNLER (Dynamic from Convex) */}
           <div className="space-y-3">
             <h4 className="font-extrabold text-xs uppercase tracking-wider text-white">
               ÜRÜNLER
             </h4>
             <ul className="space-y-2 text-xs text-slate-400">
               <li><Link href="/urunler" className="hover:text-white transition-colors">Tüm Ürünler</Link></li>
-              <li><Link href="/urunler?kategori=motor-beyinleri-ecu" className="hover:text-white transition-colors">Motor Beyinleri (ECU)</Link></li>
-              <li><Link href="/urunler?kategori=abs-esp-beyinleri" className="hover:text-white transition-colors">ABS / ESP Beyinleri</Link></li>
-              <li><Link href="/urunler?kategori=airbag-beyinleri" className="hover:text-white transition-colors">Airbag Beyinleri</Link></li>
+              {categories && categories.length > 0 ? (
+                categories.slice(0, 4).map((c) => (
+                  <li key={c._id}>
+                    <Link href={`/urunler?kategori=${c.slug}`} className="hover:text-white transition-colors">
+                      {c.name}
+                    </Link>
+                  </li>
+                ))
+              ) : null}
             </ul>
           </div>
 
@@ -150,12 +142,16 @@ export default function Footer() {
       </div>
 
       {/* 3. Copyright Bottom Bar */}
-      <div className="w-full bg-[#02060d] border-t border-slate-900 py-4 px-4 sm:px-6 lg:px-8 text-center sm:text-left">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-slate-500">
+      <div className="w-full bg-[#02060d] border-t border-slate-900 py-4 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-slate-500">
           <p>© {new Date().getFullYear()} TMS İthalat. Tüm hakları saklıdır.</p>
           <div className="flex items-center gap-4">
             <Link href="/kurumsal#kvkk" className="hover:text-slate-300 transition-colors">KVKK</Link>
             <Link href="/kurumsal" className="hover:text-slate-300 transition-colors">Gizlilik Politikası</Link>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-slate-500">Tasarım & Yazılım:</span>
+            <RoutartLogo variant="dark" showTagline={false} size="sm" />
           </div>
         </div>
       </div>

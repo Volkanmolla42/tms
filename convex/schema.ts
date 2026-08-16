@@ -80,16 +80,18 @@ export default defineSchema({
     address: v.string(),
     workingHours: v.string(),
     announcement: v.optional(v.string()),
-    heroHeadline: v.string(),
-    heroSubheadline: v.string(),
+    heroHeadline: v.optional(v.string()),
+    heroSubheadline: v.optional(v.string()),
     aiPromptTemplate: v.optional(v.string()), // AI Ürün Oluşturma Sistem Prompt Şablonu
     aiModel: v.optional(v.string()), // OpenRouter AI Modeli (Örn: meta-llama/llama-3.3-70b-instruct:free)
-    stats: v.object({
-      productsCount: v.string(),
-      brandsCount: v.string(),
-      ecuCount: v.string(),
-      experienceYears: v.string(),
-    }),
+    stats: v.optional(
+      v.object({
+        productsCount: v.string(),
+        brandsCount: v.string(),
+        ecuCount: v.string(),
+        experienceYears: v.string(),
+      })
+    ),
   }),
 
   // 6. Canlı Destek Sohbet Oturumları (Live Support Conversations)

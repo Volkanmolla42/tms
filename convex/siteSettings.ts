@@ -19,16 +19,18 @@ export const update = mutation({
     address: v.string(),
     workingHours: v.string(),
     announcement: v.optional(v.string()),
-    heroHeadline: v.string(),
-    heroSubheadline: v.string(),
+    heroHeadline: v.optional(v.string()),
+    heroSubheadline: v.optional(v.string()),
     aiPromptTemplate: v.optional(v.string()),
     aiModel: v.optional(v.string()),
-    stats: v.object({
-      productsCount: v.string(),
-      brandsCount: v.string(),
-      ecuCount: v.string(),
-      experienceYears: v.string(),
-    }),
+    stats: v.optional(
+      v.object({
+        productsCount: v.string(),
+        brandsCount: v.string(),
+        ecuCount: v.string(),
+        experienceYears: v.string(),
+      })
+    ),
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db.query("siteSettings").first();

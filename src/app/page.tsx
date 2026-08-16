@@ -10,7 +10,6 @@ import {
   ArrowRight,
   Cpu,
   Search,
-  MessageCircle,
   Award,
   Wrench,
   Layers,
@@ -18,7 +17,6 @@ import {
 import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import FloatingWhatsApp from "@/components/FloatingWhatsApp";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { generateWhatsAppLink } from "@/lib/utils";
@@ -28,6 +26,7 @@ export default function HomePage() {
 
   const categories = useQuery(api.categories.list, {});
   const brands = useQuery(api.brands.list);
+  const settings = useQuery(api.siteSettings.get);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,38 +34,6 @@ export default function HomePage() {
       window.location.href = `/urunler?q=${encodeURIComponent(searchInput.trim())}`;
     }
   };
-
-
-  // 12 Exact Categories from Screenshot 1 with custom generated studio photos
-  const defaultCategories = [
-    { title: "MOTOR BEYİNLERİ (ECU)", slug: "motor-beyinleri-ecu", img: "/images/cat-ecu.jpg" },
-    { title: "ABS / ESP BEYİNLERİ", slug: "abs-esp-beyinleri", img: "/images/cat-abs.jpg" },
-    { title: "AİRBAG BEYİNLERİ", slug: "airbag-beyinleri", img: "/images/cat-airbag.jpg" },
-    { title: "BCM / BSI BEYİNLERİ", slug: "bcm-bsi-sam-modulleri", img: "/images/cat-bcm.jpg" },
-    { title: "UCH / SAM MODÜLLERİ", slug: "uch-sam-modulleri", img: "/images/cat-uch.jpg" },
-    { title: "SİGORTA KUTULARI", slug: "sigorta-kutulari", img: "/images/cat-fusebox.jpg" },
-    { title: "GÖSTERGE PANELLERİ", slug: "gosterge-panelleri", img: "/images/cat-cluster.jpg" },
-    { title: "DİREKSİYON KUMANDA MODÜLLERİ", slug: "direksiyon-kumanda-modulleri", img: "/images/cat-steering.jpg" },
-    { title: "KLİMA KONTROL ÜNİTELERİ", slug: "klima-kontrol-uniteleri", img: "/images/cat-climate.jpg" },
-    { title: "MULTİMEDYA ÜNİTELERİ", slug: "multimedya-uniteleri", img: "/images/cat-multimedia.jpg" },
-    { title: "KONFOR MODÜLLERİ", slug: "konfor-modulleri", img: "/images/cat-comfort.jpg" },
-    { title: "ŞANZIMAN BEYİNLERİ", slug: "sanziman-beyinleri", img: "/images/cat-transmission.jpg" },
-  ];
-
-  // Brand Names matching Screenshot 1
-  const brandNames = [
-    "Mercedes-Benz",
-    "BMW",
-    "Audi",
-    "Volkswagen",
-    "Ford",
-    "Renault",
-    "Peugeot",
-    "Citroën",
-    "Fiat",
-    "Opel",
-    "Volvo",
-  ];
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
@@ -216,23 +183,27 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* 3 rows of 4 columns matching Screenshot 1 */}
+          {/* Categories Grid from Convex */}
           <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
-            {(categories && categories.length > 0 ? categories : defaultCategories).map((cat: any, i: number) => (
+            {categories?.map((cat) => (
               <Link
-                key={cat.slug || i}
+                key={cat._id || cat.slug}
                 href={`/urunler?kategori=${cat.slug}`}
                 className="group flex flex-col items-center justify-center p-6 rounded-2xl bg-white border border-slate-200 hover:border-blue-500 shadow-xs hover:shadow-lg transition-all text-center"
               >
                 <div className="w-24 h-24 rounded-xl bg-slate-50 flex items-center justify-center p-2 mb-3 group-hover:scale-105 transition-transform">
-                  <img
-                    src={cat.image || cat.img}
-                    alt={cat.name || cat.title}
-                    className="w-full h-full object-contain"
-                  />
+                  {cat.image ? (
+                    <img
+                      src={cat.image}
+                      alt={cat.name}
+                      className="w-full h-full object-contain"
+                    />
+                  ) : (
+                    <Layers className="w-10 h-10 text-slate-400" />
+                  )}
                 </div>
                 <h3 className="font-extrabold text-xs text-slate-900 uppercase tracking-tight group-hover:text-blue-600 transition-colors">
-                  {cat.name || cat.title}
+                  {cat.name}
                 </h3>
               </Link>
             ))}
@@ -240,12 +211,12 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 5. STATS BAR matching Screenshot 1 */}
+      {/* 5. STATS BAR (Dynamic from Site Settings) */}
       <section className="w-full py-10 px-4 sm:px-6 lg:px-8 bg-[#091424] text-white">
         <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6 text-center divide-y md:divide-y-0 md:divide-x divide-slate-800">
           <div className="pt-2 md:pt-0">
             <span className="text-3xl sm:text-4xl font-black text-white block">
-              15.000+
+              {settings?.stats?.productsCount || "15.000+"}
             </span>
             <span className="text-[11px] uppercase font-bold text-slate-400 mt-1 block tracking-wider">
               STOKLU ÜRÜN
@@ -254,7 +225,7 @@ export default function HomePage() {
 
           <div className="pt-2 md:pt-0">
             <span className="text-3xl sm:text-4xl font-black text-white block">
-              45+
+              {settings?.stats?.brandsCount || (brands ? `${brands.length}+` : "45+")}
             </span>
             <span className="text-[11px] uppercase font-bold text-slate-400 mt-1 block tracking-wider">
               ARAÇ MARKASI
@@ -263,7 +234,7 @@ export default function HomePage() {
 
           <div className="pt-2 md:pt-0">
             <span className="text-3xl sm:text-4xl font-black text-white block">
-              1000+
+              {settings?.stats?.ecuCount || "1000+"}
             </span>
             <span className="text-[11px] uppercase font-bold text-slate-400 mt-1 block tracking-wider">
               ECU MODELİ
@@ -272,7 +243,7 @@ export default function HomePage() {
 
           <div className="pt-2 md:pt-0">
             <span className="text-3xl sm:text-4xl font-black text-white block">
-              20+
+              {settings?.stats?.experienceYears || "20+"}
             </span>
             <span className="text-[11px] uppercase font-bold text-slate-400 mt-1 block tracking-wider">
               YILLIK TECRÜBE
@@ -281,24 +252,21 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 6. SUPPORTED BRANDS STRIP matching Screenshot 1 */}
+      {/* 6. SUPPORTED BRANDS STRIP (Dynamic from Convex) */}
       <section className="w-full py-10 px-4 sm:px-6 lg:px-8 bg-white border-b border-slate-200">
         <div className="max-w-7xl mx-auto space-y-6 text-center">
           <div className="flex items-center justify-center gap-3">
             <span className="h-px w-10 bg-slate-300" />
             <h3 className="text-xs uppercase font-extrabold text-slate-400 tracking-widest">
-              KULLANDIĞIMIZ ARAÇ MARKALARI
+              ARAÇ MARKALARI
             </h3>
             <span className="h-px w-10 bg-slate-300" />
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
-            {(brands && brands.length > 0
-              ? brands
-              : brandNames.map((name, i) => ({ _id: `fallback-${i}`, name, logoUrl: undefined }))
-            ).map((b) => (
+            {brands?.map((b) => (
               <Link
-                key={b._id || b.name}
+                key={b._id}
                 href={`/urunler?marka=${encodeURIComponent(b.name)}`}
                 className="group flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-extrabold text-slate-700 hover:text-blue-600 hover:border-blue-300 hover:bg-white hover:shadow-md transition-all shadow-2xs cursor-pointer"
               >
@@ -319,7 +287,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      <FloatingWhatsApp />
       <Footer />
     </div>
   );

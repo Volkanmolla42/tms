@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { usePathname } from "next/navigation";
-import { MessageCircle, X, Send } from "lucide-react";
+import { X, Send } from "lucide-react";
+import WhatsAppIcon from "@/components/WhatsAppIcon";
 import { generateWhatsAppLink } from "@/lib/utils";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
@@ -41,7 +42,7 @@ export default function FloatingWhatsApp() {
           <div className="bg-emerald-600 text-white p-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-                <MessageCircle className="w-6 h-6 fill-white" />
+                <WhatsAppIcon className="w-6 h-6 fill-white text-white" />
               </div>
               <div>
                 <h4 className="font-bold text-sm">TMS İthalat WhatsApp</h4>
@@ -96,12 +97,12 @@ export default function FloatingWhatsApp() {
       {/* Floating Left Button */}
       <button
         onClick={() => setOpen(!open)}
-        className="group relative flex items-center gap-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-3.5 rounded-full shadow-2xl hover:shadow-emerald-500/30 transition-all duration-300 transform hover:-translate-y-0.5 cursor-pointer"
+        className="group relative flex items-center gap-2.5 bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold px-4 py-3.5 rounded-full shadow-2xl hover:shadow-emerald-500/40 transition-all duration-300 transform hover:-translate-y-0.5 cursor-pointer"
         aria-label="WhatsApp Destek"
       >
-        <MessageCircle className="w-5 h-5 fill-white" />
+        <WhatsAppIcon className="w-5 h-5 fill-white text-white shrink-0" />
         <span className="text-sm tracking-tight font-extrabold hidden sm:inline">WhatsApp</span>
-        <span className="w-2.5 h-2.5 rounded-full bg-emerald-300 border-2 border-white animate-pulse" />
+        <span className="w-2.5 h-2.5 rounded-full bg-white border-2 border-emerald-500 animate-pulse" />
       </button>
     </div>
   );

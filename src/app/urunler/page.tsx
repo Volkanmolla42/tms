@@ -13,18 +13,17 @@ import {
   X,
   SlidersHorizontal,
   Layers,
-  Fuel,
   Car,
   Tag,
   CheckCircle2,
 } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import FloatingWhatsApp from "@/components/FloatingWhatsApp";
 import ProductCard from "@/components/ProductCard";
+import WhatsAppIcon from "@/components/WhatsAppIcon";
+import { generateWhatsAppLink } from "@/lib/utils";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
-import { generateWhatsAppLink } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SearchableCombobox, ComboboxOption } from "@/components/ui/searchable-combobox";
@@ -39,9 +38,7 @@ function ProductCatalogContent() {
 
   const [selectedCategory, setSelectedCategory] = useState<string>(categoryParam);
   const [selectedBrand, setSelectedBrand] = useState<string>(brandParam);
-  const [selectedModel, setSelectedModel] = useState<string>("");
   const [selectedCondition, setSelectedCondition] = useState<string>("Tümü");
-  const [selectedFuel, setSelectedFuel] = useState<string>("Tümü");
   const [selectedStock, setSelectedStock] = useState<string>("Tümü");
   const [oemSearch, setOemSearch] = useState<string>(queryParam);
   const [activeSearch, setActiveSearch] = useState<string>(queryParam);
@@ -57,23 +54,6 @@ function ProductCatalogContent() {
       setActiveSearch(queryParam);
     }
   }, [categoryParam, brandParam, queryParam]);
-
-  // 12 Exact Categories
-  const categoryList = [
-    { name: "Tüm Kategoriler", slug: "", img: "/images/catalog-ecu-banner.jpg" },
-    { name: "Motor Beyinleri (ECU)", slug: "motor-beyinleri-ecu", img: "/images/cat-ecu.jpg" },
-    { name: "ABS / ESP Beyinleri", slug: "abs-esp-beyinleri", img: "/images/cat-abs.jpg" },
-    { name: "Airbag Beyinleri", slug: "airbag-beyinleri", img: "/images/cat-airbag.jpg" },
-    { name: "BCM / BSI Beyinleri", slug: "bcm-bsi-sam-modulleri", img: "/images/cat-bcm.jpg" },
-    { name: "UCH / SAM Modülleri", slug: "uch-sam-modulleri", img: "/images/cat-uch.jpg" },
-    { name: "Sigorta Kutuları", slug: "sigorta-kutulari", img: "/images/cat-fusebox.jpg" },
-    { name: "Gösterge Panelleri", slug: "gosterge-panelleri", img: "/images/cat-cluster.jpg" },
-    { name: "Direksiyon Kumanda Modülleri", slug: "direksiyon-kumanda-modulleri", img: "/images/cat-steering.jpg" },
-    { name: "Klima Kontrol Üniteleri", slug: "klima-kontrol-uniteleri", img: "/images/cat-climate.jpg" },
-    { name: "Multimedya Üniteleri", slug: "multimedya-uniteleri", img: "/images/cat-multimedia.jpg" },
-    { name: "Konfor Modülleri", slug: "konfor-modulleri", img: "/images/cat-comfort.jpg" },
-    { name: "Şanzıman Beyinleri", slug: "sanziman-beyinleri", img: "/images/cat-transmission.jpg" },
-  ];
 
   // Fetch categories from Convex
   const categories = useQuery(api.categories.list, {});
@@ -100,66 +80,27 @@ function ProductCatalogContent() {
     }));
   }, [brands]);
 
-  // Searchable Category Options
+  // Searchable Category Options (Dynamic from Convex)
   const categoryOptions: ComboboxOption[] = useMemo(() => {
-    return categoryList
-      .filter((c) => c.slug !== "")
-      .map((c) => ({
-        value: c.slug,
-        label: c.name,
-      }));
-  }, [categoryList]);
+    if (!categories) return [];
+    return categories.map((c) => ({
+      value: c.slug,
+      label: c.name,
+    }));
+  }, [categories]);
 
-  // Dynamically extracted Unique Model Options from products
-  const modelOptions: ComboboxOption[] = useMemo(() => {
-    if (!rawProducts) return [];
-    const set = new Set<string>();
-    rawProducts.forEach((p) => {
-      if (p.model && p.model.trim()) {
-        // Support comma separated models if any
-        p.model.split(/[,/]/).forEach((m) => {
-          const trimmed = m.trim();
-          if (trimmed.length > 1) set.add(trimmed);
-        });
-      }
-    });
-    return Array.from(set)
-      .sort()
-      .map((m) => ({ value: m, label: m }));
-  }, [rawProducts]);
-
-  // Fuel Options
-  const fuelOptions: ComboboxOption[] = [
-    { value: "Dizel", label: "Dizel" },
-    { value: "Benzin", label: "Benzin" },
-    { value: "Hibrit", label: "Hibrit / Elektrik" },
+  // Product Condition Options (exact 1:1 match with product form)
+  const conditionOptions: ComboboxOption[] = [
+    { value: "Orijinal Çıkma", label: "Orijinal Çıkma" },
+    { value: "Sıfır - Orijinal", label: "Sıfır - Orijinal" },
+    { value: "Revizyonlu", label: "Revizyonlu" },
+    { value: "Sıfırlanmış - Virgin", label: "Sıfırlanmış - Virgin" },
   ];
 
   // Filter and Sort in client
   const processedProducts = useMemo(() => {
     if (!rawProducts) return [];
     let list = [...rawProducts];
-
-    // Filter by vehicle model if selected
-    if (selectedModel && selectedModel.trim() !== "") {
-      const modelTerm = selectedModel.toLowerCase();
-      list = list.filter(
-        (p) =>
-          (p.model && p.model.toLowerCase().includes(modelTerm)) ||
-          p.title.toLowerCase().includes(modelTerm)
-      );
-    }
-
-    // Filter by fuel if selected
-    if (selectedFuel && selectedFuel !== "Tümü") {
-      const fuelTerm = selectedFuel.toLowerCase();
-      list = list.filter(
-        (p) =>
-          p.description.toLowerCase().includes(fuelTerm) ||
-          p.title.toLowerCase().includes(fuelTerm) ||
-          p.tags?.some((t) => t.toLowerCase().includes(fuelTerm))
-      );
-    }
 
     // Sorting
     switch (sortBy) {
@@ -179,7 +120,7 @@ function ProductCatalogContent() {
     }
 
     return list;
-  }, [rawProducts, selectedModel, selectedFuel, sortBy]);
+  }, [rawProducts, sortBy]);
 
   // Pagination calculation
   const totalItems = processedProducts.length;
@@ -193,9 +134,9 @@ function ProductCatalogContent() {
 
   const activeCategoryTitle = useMemo(() => {
     if (!selectedCategory) return "TÜM ÜRÜNLER";
-    const found = categoryList.find((c) => c.slug === selectedCategory);
+    const found = categories?.find((c) => c.slug === selectedCategory);
     return found ? found.name.toUpperCase() : "ÜRÜNLER";
-  }, [selectedCategory]);
+  }, [selectedCategory, categories]);
 
   // First product image of the selected category
   const categoryFirstImage = useMemo(() => {
@@ -205,9 +146,9 @@ function ProductCatalogContent() {
     if (firstProductWithImage?.images?.[0]) {
       return firstProductWithImage.images[0];
     }
-    const foundCat = categoryList.find((c) => c.slug === selectedCategory);
-    return foundCat?.img || "/images/catalog-ecu-banner.jpg";
-  }, [rawProducts, selectedCategory]);
+    const foundCat = categories?.find((c) => c.slug === selectedCategory);
+    return foundCat?.image || "/images/catalog-ecu-banner.jpg";
+  }, [rawProducts, selectedCategory, categories]);
 
   const handleFilterSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -218,9 +159,7 @@ function ProductCatalogContent() {
   const handleResetFilters = () => {
     setSelectedCategory("");
     setSelectedBrand("");
-    setSelectedModel("");
     setSelectedCondition("Tümü");
-    setSelectedFuel("Tümü");
     setSelectedStock("Tümü");
     setOemSearch("");
     setActiveSearch("");
@@ -231,9 +170,7 @@ function ProductCatalogContent() {
   const hasActiveFilters = Boolean(
     selectedCategory ||
     selectedBrand ||
-    selectedModel ||
     selectedCondition !== "Tümü" ||
-    selectedFuel !== "Tümü" ||
     selectedStock !== "Tümü" ||
     activeSearch
   );
@@ -372,14 +309,17 @@ function ProductCatalogContent() {
                 />
               </div>
 
-              {/* ARAÇ MODELİ (Searchable Combobox) */}
+              {/* PARÇA DURUMU (Searchable Combobox) */}
               <div className="space-y-1.5">
                 <label className="font-bold text-slate-700 block uppercase text-[10px] tracking-wider flex items-center justify-between">
-                  <span>ARAÇ MODELİ</span>
-                  {selectedModel && (
+                  <span className="flex items-center gap-1">
+                    <Tag className="w-3 h-3 text-slate-400" />
+                    PARÇA DURUMU
+                  </span>
+                  {selectedCondition !== "Tümü" && (
                     <button
                       onClick={() => {
-                        setSelectedModel("");
+                        setSelectedCondition("Tümü");
                         setCurrentPage(1);
                       }}
                       className="text-[10px] text-blue-600 font-semibold hover:underline cursor-pointer"
@@ -388,77 +328,16 @@ function ProductCatalogContent() {
                     </button>
                   )}
                 </label>
-                {modelOptions.length > 0 ? (
-                  <SearchableCombobox
-                    options={modelOptions}
-                    value={selectedModel}
-                    onChange={(val) => {
-                      setSelectedModel(val);
-                      setCurrentPage(1);
-                    }}
-                    placeholder="Tüm Modeller..."
-                    searchPlaceholder="Model ara (Passat, Focus, Golf...)"
-                    allOptionLabel="Tüm Modeller"
-                  />
-                ) : (
-                  <input
-                    type="text"
-                    placeholder="Örn: Passat, Focus, Golf..."
-                    value={selectedModel}
-                    onChange={(e) => {
-                      setSelectedModel(e.target.value);
-                      setCurrentPage(1);
-                    }}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                )}
-              </div>
-
-              {/* DURUM (Sıfır / Çıkma / Tümü) */}
-              <div className="space-y-1.5">
-                <label className="font-bold text-slate-700 block uppercase text-[10px] tracking-wider">
-                  ÜRÜN DURUMU
-                </label>
-                <div className="grid grid-cols-3 gap-1">
-                  {["Tümü", "Sıfır", "Çıkma"].map((c) => {
-                    const isActive = selectedCondition === c;
-                    return (
-                      <Button
-                        key={c}
-                        type="button"
-                        variant={isActive ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => {
-                          setSelectedCondition(c);
-                          setCurrentPage(1);
-                        }}
-                        className={`h-8 text-xs font-semibold ${
-                          isActive ? "shadow-sm" : "bg-slate-50 hover:bg-slate-100"
-                        }`}
-                      >
-                        {c}
-                      </Button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* YAKIT TİPİ (Searchable Combobox) */}
-              <div className="space-y-1.5">
-                <label className="font-bold text-slate-700 block uppercase text-[10px] tracking-wider flex items-center gap-1">
-                  <Fuel className="w-3 h-3 text-slate-400" />
-                  YAKIT TİPİ
-                </label>
                 <SearchableCombobox
-                  options={fuelOptions}
-                  value={selectedFuel}
+                  options={conditionOptions}
+                  value={selectedCondition === "Tümü" ? "" : selectedCondition}
                   onChange={(val) => {
-                    setSelectedFuel(val);
+                    setSelectedCondition(val || "Tümü");
                     setCurrentPage(1);
                   }}
-                  placeholder="Tüm Yakıt Tipleri..."
-                  searchPlaceholder="Yakıt tipi ara..."
-                  allOptionLabel="Tümü (Dizel / Benzin / Hibrit)"
+                  placeholder="Tüm Parça Durumları..."
+                  searchPlaceholder="Durum ara (Çıkma, Sıfır, Revizyonlu...)"
+                  allOptionLabel="Tüm Parça Durumları"
                 />
               </div>
 
@@ -514,11 +393,12 @@ function ProductCatalogContent() {
                 className="block pt-1"
               >
                 <Button
-                  variant="secondary"
+                  variant="whatsapp"
                   size="sm"
-                  className="w-full bg-white hover:bg-slate-100 text-slate-900 font-extrabold text-xs shadow-sm"
+                  className="w-full font-extrabold text-xs shadow-sm flex items-center justify-center gap-1.5"
                 >
-                  WHATSAPP İLE SORUN
+                  <WhatsAppIcon className="w-4 h-4 fill-white text-white" />
+                  <span>WHATSAPP İLE SORUN</span>
                 </Button>
               </a>
             </div>
@@ -587,7 +467,7 @@ function ProductCatalogContent() {
                   
                   {selectedCategory && (
                     <Badge variant="info" className="gap-1 py-0.5 px-2 text-[11px] cursor-pointer" onClick={() => setSelectedCategory("")}>
-                      <span>{categoryList.find(c => c.slug === selectedCategory)?.name || selectedCategory}</span>
+                      <span>{categories?.find((c) => c.slug === selectedCategory)?.name || selectedCategory}</span>
                       <X className="w-3 h-3 hover:text-blue-900" />
                     </Badge>
                   )}
@@ -599,23 +479,9 @@ function ProductCatalogContent() {
                     </Badge>
                   )}
 
-                  {selectedModel && (
-                    <Badge variant="info" className="gap-1 py-0.5 px-2 text-[11px] cursor-pointer" onClick={() => setSelectedModel("")}>
-                      <span>Model: {selectedModel}</span>
-                      <X className="w-3 h-3 hover:text-blue-900" />
-                    </Badge>
-                  )}
-
                   {selectedCondition !== "Tümü" && (
                     <Badge variant="info" className="gap-1 py-0.5 px-2 text-[11px] cursor-pointer" onClick={() => setSelectedCondition("Tümü")}>
                       <span>Durum: {selectedCondition}</span>
-                      <X className="w-3 h-3 hover:text-blue-900" />
-                    </Badge>
-                  )}
-
-                  {selectedFuel !== "Tümü" && (
-                    <Badge variant="info" className="gap-1 py-0.5 px-2 text-[11px] cursor-pointer" onClick={() => setSelectedFuel("Tümü")}>
-                      <span>Yakıt: {selectedFuel}</span>
                       <X className="w-3 h-3 hover:text-blue-900" />
                     </Badge>
                   )}
@@ -742,7 +608,6 @@ function ProductCatalogContent() {
         </div>
       </div>
 
-      <FloatingWhatsApp />
       <Footer />
     </div>
   );

@@ -4,7 +4,8 @@ import { mutation, query } from "./_generated/server";
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db.query("brands").withIndex("by_order").take(100);
+    const brands = await ctx.db.query("brands").collect();
+    return brands.sort((a, b) => (a.order ?? 99) - (b.order ?? 99));
   },
 });
 
@@ -61,59 +62,71 @@ export const deleteBrand = mutation({
   },
 });
 
-// Default clean SVG car logos dictionary
-const DEFAULT_BRAND_LOGOS: Record<string, string> = {
-  renault: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/renault.svg",
-  volkswagen: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/volkswagen.svg",
-  "mercedes-benz": "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/mercedes.svg",
-  bmw: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/bmw.svg",
-  audi: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/audi.svg",
-  ford: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/ford.svg",
-  peugeot: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/peugeot.svg",
-  citroen: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/citroen.svg",
-  fiat: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/fiat.svg",
-  opel: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/opel.svg",
-  seat: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/seat.svg",
-  skoda: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/skoda.svg",
-  toyota: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/toyota.svg",
-  hyundai: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/hyundai.svg",
-  honda: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/honda.svg",
-  nissan: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/nissan.svg",
-  volvo: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/volvo.svg",
-  kia: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/kia.svg",
-  dacia: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/dacia.svg",
-  "alfa-romeo": "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/alfaromeo.svg",
-  porsche: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/porsche.svg",
-  "land-rover": "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/landrover.svg",
-  jaguar: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/jaguar.svg",
-  mitsubishi: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/mitsubishi.svg",
-  chevrolet: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/chevrolet.svg",
-  suzuki: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/suzuki.svg",
-};
+// 31+ Comprehensive brand catalog with local codebase SVG paths
+export const INITIAL_BRANDS = [
+  { name: "Renault", slug: "renault", logoUrl: "/images/brands/renault.svg", order: 1 },
+  { name: "Volkswagen", slug: "volkswagen", logoUrl: "/images/brands/volkswagen.svg", order: 2 },
+  { name: "Mercedes-Benz", slug: "mercedes-benz", logoUrl: "/images/brands/mercedes-benz.svg", order: 3 },
+  { name: "BMW", slug: "bmw", logoUrl: "/images/brands/bmw.svg", order: 4 },
+  { name: "Audi", slug: "audi", logoUrl: "/images/brands/audi.svg", order: 5 },
+  { name: "Ford", slug: "ford", logoUrl: "/images/brands/ford.svg", order: 6 },
+  { name: "Peugeot", slug: "peugeot", logoUrl: "/images/brands/peugeot.svg", order: 7 },
+  { name: "Citroën", slug: "citroen", logoUrl: "/images/brands/citroen.svg", order: 8 },
+  { name: "Fiat", slug: "fiat", logoUrl: "/images/brands/fiat.svg", order: 9 },
+  { name: "Opel", slug: "opel", logoUrl: "/images/brands/opel.svg", order: 10 },
+  { name: "Seat", slug: "seat", logoUrl: "/images/brands/seat.svg", order: 11 },
+  { name: "Skoda", slug: "skoda", logoUrl: "/images/brands/skoda.svg", order: 12 },
+  { name: "Toyota", slug: "toyota", logoUrl: "/images/brands/toyota.svg", order: 13 },
+  { name: "Hyundai", slug: "hyundai", logoUrl: "/images/brands/hyundai.svg", order: 14 },
+  { name: "Honda", slug: "honda", logoUrl: "/images/brands/honda.svg", order: 15 },
+  { name: "Nissan", slug: "nissan", logoUrl: "/images/brands/nissan.svg", order: 16 },
+  { name: "Volvo", slug: "volvo", logoUrl: "/images/brands/volvo.svg", order: 17 },
+  { name: "Kia", slug: "kia", logoUrl: "/images/brands/kia.svg", order: 18 },
+  { name: "Dacia", slug: "dacia", logoUrl: "/images/brands/dacia.svg", order: 19 },
+  { name: "Alfa Romeo", slug: "alfa-romeo", logoUrl: "/images/brands/alfa-romeo.svg", order: 20 },
+  { name: "Porsche", slug: "porsche", logoUrl: "/images/brands/porsche.svg", order: 21 },
+  { name: "Land Rover", slug: "land-rover", logoUrl: "/images/brands/land-rover.svg", order: 22 },
+  { name: "Jaguar", slug: "jaguar", logoUrl: "/images/brands/jaguar.svg", order: 23 },
+  { name: "Mitsubishi", slug: "mitsubishi", logoUrl: "/images/brands/mitsubishi.svg", order: 24 },
+  { name: "Chevrolet", slug: "chevrolet", logoUrl: "/images/brands/chevrolet.svg", order: 25 },
+  { name: "Suzuki", slug: "suzuki", logoUrl: "/images/brands/suzuki.svg", order: 26 },
+  { name: "Mini", slug: "mini", logoUrl: "/images/brands/mini.svg", order: 27 },
+  { name: "Mazda", slug: "mazda", logoUrl: "/images/brands/mazda.svg", order: 28 },
+  { name: "Jeep", slug: "jeep", logoUrl: "/images/brands/jeep.svg", order: 29 },
+  { name: "Iveco", slug: "iveco", logoUrl: "/images/brands/iveco.svg", order: 30 },
+  { name: "Subaru", slug: "subaru", logoUrl: "/images/brands/subaru.svg", order: 31 },
+];
 
-export const autoFillLogos = mutation({
+export const seedAll = mutation({
   args: {},
   handler: async (ctx) => {
-    const allBrands = await ctx.db.query("brands").take(200);
-    let updatedCount = 0;
+    const existing = await ctx.db.query("brands").collect();
+    const existingBySlug = new Map(existing.map((b) => [b.slug.toLowerCase(), b]));
+    let created = 0;
+    let updated = 0;
 
-    for (const b of allBrands) {
-      const slugKey = b.slug.toLowerCase().trim();
-      const nameKey = b.name.toLowerCase().trim();
-      const matchedLogo =
-        DEFAULT_BRAND_LOGOS[slugKey] ||
-        DEFAULT_BRAND_LOGOS[nameKey] ||
-        (slugKey === "mercedes" || slugKey === "mercedes-benz" ? DEFAULT_BRAND_LOGOS["mercedes-benz"] : undefined) ||
-        (slugKey.includes("citroen") ? DEFAULT_BRAND_LOGOS["citroen"] : undefined) ||
-        (slugKey.includes("alfa") ? DEFAULT_BRAND_LOGOS["alfa-romeo"] : undefined) ||
-        (slugKey.includes("land") ? DEFAULT_BRAND_LOGOS["land-rover"] : undefined);
-
-      if (matchedLogo && (!b.logoUrl || b.logoUrl.trim() === "")) {
-        await ctx.db.patch(b._id, { logoUrl: matchedLogo });
-        updatedCount++;
+    for (const item of INITIAL_BRANDS) {
+      const found = existingBySlug.get(item.slug.toLowerCase());
+      if (!found) {
+        await ctx.db.insert("brands", {
+          name: item.name,
+          slug: item.slug,
+          logoUrl: item.logoUrl,
+          order: item.order,
+          popular: false,
+          isActive: true,
+        });
+        created++;
+      } else {
+        // Update logo to point to local codebase path if needed
+        await ctx.db.patch(found._id, {
+          logoUrl: item.logoUrl,
+          order: item.order,
+        });
+        updated++;
       }
     }
 
-    return { success: true, updatedCount };
+    return { created, updated, total: INITIAL_BRANDS.length };
   },
 });

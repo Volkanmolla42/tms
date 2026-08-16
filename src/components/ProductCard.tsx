@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Eye, MessageCircle, Cpu, Tag } from "lucide-react";
+import { Eye, Cpu, Tag } from "lucide-react";
+import WhatsAppIcon from "@/components/WhatsAppIcon";
 import { generateWhatsAppLink } from "@/lib/utils";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
@@ -95,7 +96,7 @@ export default function ProductCard({ product }: ProductCardProps) {
           className="shrink-0"
         >
           <button className="py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs">
-            <MessageCircle className="w-3.5 h-3.5 fill-white" />
+            <WhatsAppIcon className="w-3.5 h-3.5 fill-white text-white" />
             <span className="hidden sm:inline">WhatsApp</span>
           </button>
         </a>

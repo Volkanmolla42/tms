@@ -4,7 +4,6 @@ import Link from "next/link";
 import { ChevronRight, Home, ArrowRight, ShieldCheck, Cpu } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import FloatingWhatsApp from "@/components/FloatingWhatsApp";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
@@ -78,7 +77,6 @@ export default function MarkalarPage() {
         </div>
       </div>
 
-      <FloatingWhatsApp />
       <Footer />
     </div>
   );

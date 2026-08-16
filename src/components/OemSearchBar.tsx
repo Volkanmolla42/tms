@@ -28,15 +28,8 @@ export default function OemSearchBar({
     limit: 6,
   });
 
-  const popularOems = [
-    "0281011234",
-    "A6519005401",
-    "03L906023LF",
-    "5WS40539H-T",
-    "237101702R",
-    "8K0907115D",
-    "0281031679",
-  ];
+  const featuredProducts = useQuery(api.products.getFeatured, { limit: 7 });
+  const popularOems = (featuredProducts || []).map((p) => p.oemNumber).filter(Boolean);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
