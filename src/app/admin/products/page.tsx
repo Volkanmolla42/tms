@@ -23,6 +23,8 @@ import {
   AlertTriangle,
   CheckCircle2,
   Globe,
+  Sparkles,
+  Zap,
 } from "lucide-react";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
@@ -161,6 +163,8 @@ export default function AdminProductsPage() {
 
   // AI Auto-Fill State
   const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiGeneratingProvider, setAiGeneratingProvider] = useState<"gpt" | "gemini" | null>(null);
+  const [aiHint, setAiHint] = useState("");
   const [aiError, setAiError] = useState("");
   const [aiSuccess, setAiSuccess] = useState("");
 
@@ -212,6 +216,7 @@ export default function AdminProductsPage() {
     setMetaKeywords("");
     setTagsInput("");
     setEditingProduct(null);
+    setAiHint("");
     setAiError("");
     setAiSuccess("");
   };
@@ -242,27 +247,37 @@ export default function AdminProductsPage() {
     setMetaDescription(p.metaDescription || "");
     setMetaKeywords(p.metaKeywords || "");
     setTagsInput(p.tags ? p.tags.join(", ") : "");
+    setAiHint("");
     setAiError("");
     setAiSuccess("");
     setAddProductModalOpen(true);
   };
 
   // AI Auto Fill Handler
-  const handleAiAutoFill = async () => {
+  const handleAiAutoFill = async (provider: "gpt" | "gemini") => {
     if (!oemNumber.trim()) {
       setAiError("Lütfen önce OEM numarasını girin.");
       return;
     }
 
     setAiGenerating(true);
+    setAiGeneratingProvider(provider);
     setAiError("");
     setAiSuccess("");
 
     try {
+      const hintText = [
+        aiHint.trim(),
+        brand !== "Genel Uyumlu" ? `Marka: ${brand}` : "",
+      ]
+        .filter(Boolean)
+        .join(" - ");
+
       const result = await generateProductDetailsAction({
         oemNumber: oemNumber.trim(),
         shelfCode: shelfCode.trim().toUpperCase() || undefined,
-        additionalHint: brand !== "Genel Uyumlu" ? `Marka: ${brand}` : undefined,
+        additionalHint: hintText || undefined,
+        provider,
       });
 
       if (result) {
@@ -291,13 +306,15 @@ export default function AdminProductsPage() {
           }
         }
 
-        setAiSuccess("Ürün bilgileri OEM koduyla otomatik dolduruldu.");
+        const modelLabel = provider === "gemini" ? "Google Gemini (Flash)" : "GPT-5.6 Luna";
+        setAiSuccess(`Ürün bilgileri ${modelLabel} ile başarıyla oluşturuldu.`);
         setTimeout(() => setAiSuccess(""), 4000);
       }
     } catch (err: any) {
       setAiError(err?.message || "Detaylar üretilirken hata oluştu.");
     } finally {
       setAiGenerating(false);
+      setAiGeneratingProvider(null);
     }
   };
 
@@ -970,25 +987,62 @@ export default function AdminProductsPage() {
 
               <section className="min-w-0 space-y-4">
             {/* AI Assistant Banner */}
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 space-y-3">
-              <div className="flex items-center justify-between">
+            <div className="bg-gradient-to-r from-blue-50/80 via-indigo-50/80 to-purple-50/80 border border-blue-200 rounded-xl p-4 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                 <div className="flex items-center gap-2">
                   <Cpu className="w-4 h-4 text-blue-600" />
                   <span className="font-bold text-slate-900 text-xs">Yapay Zeka İle Otomatik Doldur</span>
                 </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={handleAiAutoFill}
-                  disabled={aiGenerating || !oemNumber.trim()}
-                  className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-8 font-semibold gap-1.5 cursor-pointer shadow-xs"
-                >
-                  {aiGenerating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Cpu className="w-3.5 h-3.5" />}
-                  <span>{aiGenerating ? "Analiz Ediliyor..." : "OEM'den Üret"}</span>
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => handleAiAutoFill("gpt")}
+                    disabled={aiGenerating || !oemNumber.trim()}
+                    className="bg-purple-600 hover:bg-purple-700 text-white text-xs h-8 font-semibold gap-1.5 cursor-pointer shadow-xs"
+                    title="OpenRouter GPT-5.6 Luna modeli ile canlı web araması yaparak üretir"
+                  >
+                    {aiGenerating && aiGeneratingProvider === "gpt" ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Sparkles className="w-3.5 h-3.5" />
+                    )}
+                    <span>{aiGenerating && aiGeneratingProvider === "gpt" ? "GPT Analiz Ediyor..." : "GPT ile Üret"}</span>
+                  </Button>
+
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => handleAiAutoFill("gemini")}
+                    disabled={aiGenerating || !oemNumber.trim()}
+                    className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-8 font-semibold gap-1.5 cursor-pointer shadow-xs"
+                    title="Google AI Studio Gemini Flash modeli ile üretir"
+                  >
+                    {aiGenerating && aiGeneratingProvider === "gemini" ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Zap className="w-3.5 h-3.5" />
+                    )}
+                    <span>{aiGenerating && aiGeneratingProvider === "gemini" ? "Gemini Analiz Ediyor..." : "Gemini ile Üret"}</span>
+                  </Button>
+                </div>
               </div>
+
+              {/* Ek İpucu / Açıklama Input */}
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-slate-700 block">
+                  Ek Açıklama / İpucu (İsteğe Bağlı)
+                </label>
+                <Input
+                  placeholder="Örn: Bu Peugeot 307 ön sağ cam motorudur, 1.6 HDi, 2005 model vb."
+                  value={aiHint}
+                  onChange={(e) => setAiHint(e.target.value)}
+                  className="bg-white text-xs h-8 placeholder:text-slate-400 border-blue-200 focus:border-blue-500 font-medium"
+                />
+              </div>
+
               <p className="text-[11px] text-slate-500">
-                Parça üzerindeki OEM / Bosch kodunu girip butona tıkladığınızda başlık, uyumlu marka-model, açıklama ve SEO etiketleri otomatik olarak oluşturulur.
+                Parça kodunu girip dilerseniz yukarıdaki kutuya ek açıklama yazarak <strong>GPT</strong> veya <strong>Gemini</strong> butonuna basabilirsiniz. Yapay zeka girdiğiniz ipucunu ve canlı internet kataloglarını harmanlayarak tüm alanları dolduracaktır.
               </p>
               <div className="flex items-center gap-1.5 text-[10.5px] text-amber-800 bg-amber-50/90 border border-amber-200/90 px-2.5 py-1.5 rounded-lg">
                 <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-amber-600" />
