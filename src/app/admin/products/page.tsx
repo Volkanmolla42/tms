@@ -25,6 +25,7 @@ import {
   Globe,
   Sparkles,
   Zap,
+  Star,
 } from "lucide-react";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
@@ -219,6 +220,25 @@ export default function AdminProductsPage() {
     setAiHint("");
     setAiError("");
     setAiSuccess("");
+  };
+
+  const handleSetCoverImage = (indexToCover: number) => {
+    if (indexToCover <= 0 || indexToCover >= previewImages.length) return;
+    setPreviewImages((prev) => {
+      const copy = [...prev];
+      const [item] = copy.splice(indexToCover, 1);
+      copy.unshift(item);
+      return copy;
+    });
+    setLegacyImageStorageIds((prev) => {
+      if (!prev || prev.length <= indexToCover) return prev;
+      const copy = [...prev];
+      const [item] = copy.splice(indexToCover, 1);
+      copy.unshift(item);
+      return copy;
+    });
+    setSelectedFormImageIndex(0);
+    resetFormImageZoom();
   };
 
   const handleOpenAddProduct = () => {
@@ -458,6 +478,65 @@ export default function AdminProductsPage() {
       setLightboxOemStatus("saved");
     } catch (error) {
       console.error("OEM numarası kaydedilemedi:", error);
+      setLightboxOemStatus("error");
+    } finally {
+      setSavingLightboxOem(false);
+    }
+  };
+
+  const handleSetLightboxCover = async () => {
+    const product = lightbox?.product;
+    if (!product || !lightbox || lightbox.index === 0) return;
+
+    setSavingLightboxOem(true);
+    setLightboxOemStatus("");
+    try {
+      const currentImages = [...(product.images || [])];
+      const [chosenImage] = currentImages.splice(lightbox.index, 1);
+      currentImages.unshift(chosenImage);
+
+      let updatedStorageIds = product.imageStorageIds ? [...product.imageStorageIds] : undefined;
+      if (updatedStorageIds && updatedStorageIds.length > lightbox.index) {
+        const [chosenStorageId] = updatedStorageIds.splice(lightbox.index, 1);
+        updatedStorageIds.unshift(chosenStorageId);
+      }
+
+      await updateProduct({
+        id: product._id,
+        title: product.title,
+        slug: product.slug,
+        oemNumber: product.oemNumber,
+        shelfCode: product.shelfCode || undefined,
+        categoryId: product.categoryId,
+        brand: product.brand,
+        model: product.model || undefined,
+        condition: product.condition,
+        inStock: product.inStock,
+        description: product.description,
+        images: currentImages,
+        imageStorageIds: updatedStorageIds,
+        metaTitle: product.metaTitle || undefined,
+        metaDescription: product.metaDescription || undefined,
+        metaKeywords: product.metaKeywords || undefined,
+        tags: product.tags || undefined,
+      });
+
+      setLightbox((current) => {
+        if (!current?.product) return current;
+        return {
+          ...current,
+          images: currentImages,
+          index: 0,
+          product: {
+            ...current.product,
+            images: currentImages,
+            imageStorageIds: updatedStorageIds,
+          },
+        };
+      });
+      setLightboxOemStatus("saved");
+    } catch (error) {
+      console.error("Kapak görseli güncellenemedi:", error);
       setLightboxOemStatus("error");
     } finally {
       setSavingLightboxOem(false);
@@ -897,7 +976,7 @@ export default function AdminProductsPage() {
                 <div className="mb-3 flex items-center justify-between">
                   <div>
                     <p className="text-sm font-bold text-slate-900">Ürün Görselleri</p>
-                    <p className="mt-0.5 text-[11px] text-slate-500">Ana görseli seçin; tıklayın veya tekerlekle yakınlaştırın.</p>
+                    <p className="mt-0.5 text-[11px] text-slate-500">1. görsel otomatik ana kapak görselidir. Değiştirmek için görseli kapak yapabilirsiniz.</p>
                   </div>
                   <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-bold text-slate-500 shadow-xs">
                     {previewImages.length} görsel
@@ -906,23 +985,45 @@ export default function AdminProductsPage() {
 
                 <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                   {previewImages[selectedFormImageIndex] ? (
-                    <button
-                      type="button"
-                      onClick={handleFormImageClick}
-                      onWheel={handleFormImageWheel}
-                      className={`h-full w-full overflow-hidden ${formImageZoom > 1 ? "cursor-zoom-out" : "cursor-zoom-in"}`}
-                      title={formImageZoom > 1 ? "Normal boyuta dönmek için tıkla" : "Yakınlaştırmak için tıkla"}
-                    >
-                      <img
-                        src={previewImages[selectedFormImageIndex]}
-                        alt="Seçili ürün görseli"
-                        style={{
-                          transform: `scale(${formImageZoom})`,
-                          transformOrigin: formImageZoomOrigin,
-                        }}
-                        className="h-full w-full object-contain transition-transform duration-200"
-                      />
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleFormImageClick}
+                        onWheel={handleFormImageWheel}
+                        className={`h-full w-full overflow-hidden ${formImageZoom > 1 ? "cursor-zoom-out" : "cursor-zoom-in"}`}
+                        title={formImageZoom > 1 ? "Normal boyuta dönmek için tıkla" : "Yakınlaştırmak için tıkla"}
+                      >
+                        <img
+                          src={previewImages[selectedFormImageIndex]}
+                          alt="Seçili ürün görseli"
+                          style={{
+                            transform: `scale(${formImageZoom})`,
+                            transformOrigin: formImageZoomOrigin,
+                          }}
+                          className="h-full w-full object-contain transition-transform duration-200"
+                        />
+                      </button>
+
+                      {/* Kapak Görseli Rozeti / Butonu */}
+                      <div className="absolute top-3 left-3 flex items-center gap-1.5">
+                        {selectedFormImageIndex === 0 ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-amber-500 text-white text-[11px] font-bold shadow-md">
+                            <Star className="w-3.5 h-3.5 fill-current" />
+                            <span>Ana Kapak Görseli</span>
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleSetCoverImage(selectedFormImageIndex)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-slate-900/90 hover:bg-amber-600 text-white text-[11px] font-bold shadow-md backdrop-blur-xs transition-all cursor-pointer"
+                            title="Bu görseli ana kapak görseli yap"
+                          >
+                            <Star className="w-3.5 h-3.5 fill-current" />
+                            <span>Bu Görseli Kapak Yap</span>
+                          </button>
+                        )}
+                      </div>
+                    </>
                   ) : (
                     <div className="flex flex-col items-center gap-2 text-slate-400">
                       <ImageIcon className="h-12 w-12" />
@@ -950,6 +1051,32 @@ export default function AdminProductsPage() {
                       >
                         <img src={img} alt={`${i + 1}. ürün görseli`} className="h-full w-full rounded object-contain" />
                       </button>
+
+                      {/* Kapak Görseli Rozeti */}
+                      {i === 0 && (
+                        <span
+                          className="absolute left-1 bottom-1 px-1 py-0.5 rounded text-[8px] font-black bg-amber-500 text-white shadow-xs leading-none"
+                          title="Ana Kapak Görseli"
+                        >
+                          KAPAK
+                        </span>
+                      )}
+
+                      {/* Diğer görseller için Hızlı Kapak Yap Butonu */}
+                      {i > 0 && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSetCoverImage(i);
+                          }}
+                          className="absolute left-0.5 top-0.5 rounded-full bg-slate-900/80 hover:bg-amber-500 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100 cursor-pointer shadow-xs"
+                          title="Kapak Görseli Yap"
+                        >
+                          <Star className="h-2.5 w-2.5 fill-current" />
+                        </button>
+                      )}
+
                       <button
                         type="button"
                         onClick={() => {
@@ -958,7 +1085,7 @@ export default function AdminProductsPage() {
                           setSelectedFormImageIndex((current) => Math.max(0, Math.min(current, previewImages.length - 2)));
                           resetFormImageZoom();
                         }}
-                        className="absolute -right-1 -top-1 rounded-full bg-red-600 p-0.5 text-white opacity-0 transition-opacity group-hover:opacity-100"
+                        className="absolute -right-1 -top-1 rounded-full bg-red-600 p-0.5 text-white opacity-0 transition-opacity group-hover:opacity-100 cursor-pointer"
                         aria-label="Görseli kaldır"
                       >
                         <X className="h-3 w-3" />
@@ -1361,13 +1488,18 @@ export default function AdminProductsPage() {
                   key={i}
                   type="button"
                   onClick={(e) => { e.stopPropagation(); resetLightboxZoom(); setLightbox((lb) => lb ? { ...lb, index: i } : null); }}
-                  className={`w-14 h-14 rounded-lg border-2 overflow-hidden bg-white/10 flex-shrink-0 transition-all cursor-pointer ${
+                  className={`relative w-14 h-14 rounded-lg border-2 overflow-hidden bg-white/10 flex-shrink-0 transition-all cursor-pointer ${
                     i === lightbox.index
                       ? "border-white scale-110 shadow-lg"
                       : "border-white/30 opacity-60 hover:opacity-100"
                   }`}
                 >
                   <img src={img} alt={`Küçük resim ${i + 1}`} className="w-full h-full object-contain" draggable={false} />
+                  {i === 0 && (
+                    <span className="absolute bottom-0.5 left-0.5 px-1 py-0.5 rounded text-[7px] font-black bg-amber-500 text-white shadow-xs leading-none">
+                      KAPAK
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
@@ -1396,6 +1528,30 @@ export default function AdminProductsPage() {
                     <span className="mt-0.5 block truncate font-mono font-semibold text-white">{lightbox.product.shelfCode || "—"}</span>
                   </div>
                 </div>
+
+                {/* Hızlı Kapak Görseli Seçimi */}
+                {lightbox.images.length > 1 && (
+                  <div className="mt-3 pt-3 border-t border-white/10">
+                    {lightbox.index === 0 ? (
+                      <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-bold">
+                        <Star className="w-3.5 h-3.5 fill-current text-amber-400 shrink-0" />
+                        <span>Ana Kapak Görseli</span>
+                      </div>
+                    ) : (
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleSetLightboxCover}
+                        disabled={savingLightboxOem || generatingLightboxOem}
+                        className="h-8.5 w-full bg-amber-600 text-xs font-bold text-white hover:bg-amber-500 cursor-pointer shadow-md"
+                        title="Bu görseli ürünün 1. (ana kapak) görseli yapar"
+                      >
+                        <Star className="mr-1.5 h-3.5 w-3.5 fill-current" />
+                        Bu Görseli Kapak Yap
+                      </Button>
+                    )}
+                  </div>
+                )}
               </div>
 
               <form onSubmit={handleSaveLightboxOem} className="pt-4">
