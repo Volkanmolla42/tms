@@ -990,6 +990,12 @@ export default function AdminProductsPage() {
               <p className="text-[11px] text-slate-500">
                 Parça üzerindeki OEM / Bosch kodunu girip butona tıkladığınızda başlık, uyumlu marka-model, açıklama ve SEO etiketleri otomatik olarak oluşturulur.
               </p>
+              <div className="flex items-center gap-1.5 text-[10.5px] text-amber-800 bg-amber-50/90 border border-amber-200/90 px-2.5 py-1.5 rounded-lg">
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-amber-600" />
+                <span>
+                  <strong>Dikkat:</strong> Yapay zeka teknik detaylarda veya uyumlulukta hata yapabilir. Lütfen üretilen bilgileri kaydetmeden önce kontrol ediniz.
+                </span>
+              </div>
               {aiError && <p className="text-[11px] text-red-600 font-medium">{aiError}</p>}
               {aiSuccess && <p className="text-[11px] text-emerald-600 font-medium">{aiSuccess}</p>}
             </div>

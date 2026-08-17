@@ -57,50 +57,7 @@ export const LOCAL_BRAND_LOGOS: Record<string, string> = {
   subaru: "/images/brands/subaru.svg",
 };
 
-// Local codebase category images map
-export const LOCAL_CATEGORY_IMAGES: Record<string, string> = {
-  "motor-beyinleri-ecu": "/images/cat-ecu.jpg",
-  "motor-beyni": "/images/cat-ecu.jpg",
-  "motor-beyinleri": "/images/cat-ecu.jpg",
-  ecu: "/images/cat-ecu.jpg",
-  "abs-esp-beyinleri": "/images/cat-abs.jpg",
-  "abs-beyni": "/images/cat-abs.jpg",
-  abs: "/images/cat-abs.jpg",
-  "airbag-beyinleri": "/images/cat-airbag.jpg",
-  "airbag-beyni": "/images/cat-airbag.jpg",
-  airbag: "/images/cat-airbag.jpg",
-  "bcm-bsi-sam-modulleri": "/images/cat-bcm.jpg",
-  "bcm-bsi-beyinleri": "/images/cat-bcm.jpg",
-  bcm: "/images/cat-bcm.jpg",
-  bsi: "/images/cat-bcm.jpg",
-  "uch-sam-modulleri": "/images/cat-uch.jpg",
-  uch: "/images/cat-uch.jpg",
-  sam: "/images/cat-uch.jpg",
-  "sigorta-kutulari": "/images/cat-fusebox.jpg",
-  "sigorta-kutusu": "/images/cat-fusebox.jpg",
-  fusebox: "/images/cat-fusebox.jpg",
-  "gosterge-panelleri": "/images/cat-cluster.jpg",
-  "gosterge-paneli": "/images/cat-cluster.jpg",
-  kadran: "/images/cat-cluster.jpg",
-  cluster: "/images/cat-cluster.jpg",
-  "direksiyon-kumanda-modulleri": "/images/cat-steering.jpg",
-  "direksiyon-kutusu": "/images/cat-steering.jpg",
-  steering: "/images/cat-steering.jpg",
-  "klima-kontrol-uniteleri": "/images/cat-climate.jpg",
-  "klima-paneli": "/images/cat-climate.jpg",
-  climate: "/images/cat-climate.jpg",
-  "multimedya-uniteleri": "/images/cat-multimedia.jpg",
-  multimedya: "/images/cat-multimedia.jpg",
-  navigasyon: "/images/cat-multimedia.jpg",
-  ekran: "/images/cat-multimedia.jpg",
-  "konfor-modulleri": "/images/cat-comfort.jpg",
-  "konfor-beyni": "/images/cat-comfort.jpg",
-  comfort: "/images/cat-comfort.jpg",
-  "sanziman-beyinleri": "/images/cat-transmission.jpg",
-  "sanziman-beyni": "/images/cat-transmission.jpg",
-  tcu: "/images/cat-transmission.jpg",
-  transmission: "/images/cat-transmission.jpg",
-};
+
 
 // Subtle audio chime for new incoming chat message
 export function playAdminNotificationSound() {

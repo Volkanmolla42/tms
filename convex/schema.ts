@@ -10,7 +10,6 @@ export default defineSchema({
     name: v.string(), // Kategori Adı (Örn: Motor Beyinleri (ECU))
     slug: v.string(), // URL slug (Örn: motor-beyinleri-ecu)
     description: v.optional(v.string()),
-    image: v.optional(v.string()),
     imageStorageId: v.optional(v.id("_storage")), // Convex Storage Dosya ID'si
     order: v.optional(v.number()),
     isActive: v.optional(v.boolean()),

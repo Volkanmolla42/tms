@@ -25,7 +25,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { slugify, LOCAL_CATEGORY_IMAGES } from "../admin-utils";
+import { slugify } from "../admin-utils";
 
 export default function AdminCategoriesPage() {
   const [catSearch, setCatSearch] = useState("");
@@ -94,25 +94,6 @@ export default function AdminCategoriesPage() {
     setCategoryModalOpen(true);
   };
 
-  // Debounced auto-category image selection based on category name / slug
-  useEffect(() => {
-    if (!categoryModalOpen) return;
-    const timer = setTimeout(() => {
-      const key = (catSlug || slugify(catName)).trim();
-      if (!key) return;
-      const matched =
-        LOCAL_CATEGORY_IMAGES[key] ||
-        LOCAL_CATEGORY_IMAGES[slugify(catName)] ||
-        Object.entries(LOCAL_CATEGORY_IMAGES).find(([k]) => key.includes(k) || k.includes(key))?.[1];
-
-      if (matched && (!catPreviewImage || catPreviewImage.startsWith("/images/cat-"))) {
-        setCatPreviewImage(matched);
-        setCatStorageId(null);
-      }
-    }, 250);
-    return () => clearTimeout(timer);
-  }, [catName, catSlug, categoryModalOpen]);
-
   const handleCategoryFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -147,7 +128,6 @@ export default function AdminCategoriesPage() {
         name: catName,
         slug: generatedSlug,
         description: catDescription || undefined,
-        image: catPreviewImage || undefined,
         imageStorageId: catStorageId || undefined,
         order: Number(catOrder),
         isActive: catIsActive,
