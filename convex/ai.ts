@@ -8,6 +8,7 @@ export interface GeneratedProductResult {
   oemNumber: string;
   title: string;
   brand: string;
+  manufacturer: string;
   model: string;
   categoryId?: Id<"categories">;
   categoryName: string;
@@ -21,9 +22,60 @@ export interface GeneratedProductResult {
   slug: string;
 }
 
+function buildCatalogDescription({
+  brand,
+  manufacturer,
+  oemNumber,
+  categoryName,
+  shelfCode,
+  condition,
+  model,
+}: {
+  brand: string;
+  manufacturer: string;
+  oemNumber: string;
+  categoryName: string;
+  shelfCode?: string;
+  condition: string;
+  model: string;
+}) {
+  const vehicleBrand = brand.trim() || "Genel Uyumlu";
+  const producer = manufacturer.trim() || "Orijinal ekipman üreticisi";
+  const partType = categoryName.trim() || "Oto Elektronik Parçası";
+  const partNumber = oemNumber.trim();
+  const stockCode = shelfCode?.trim().toUpperCase() || "Belirtilmemiş";
+  const productCondition = condition.trim() || "Orijinal Çıkma";
+  const compatibility = model.trim()
+    ? `${vehicleBrand} ${model.trim()} Modelleri`
+    : `${vehicleBrand} Modelleri`;
+
+  return `${vehicleBrand} araçlar için ${producer} üretimi ${partNumber} parça numaralı ${partType} orijinal çıkma yedek parça.
+
+Parça Özellikleri & Kontroller:
+Ürün profesyonel olarak araçtan sökülmüş, tüm soket ve pin kontrolleri yapılmış, kullanıma hazır durumdadır. Satın almadan önce parça üzerindeki numaranın (${partNumber}) kontrol edilmesi önerilir.
+
+Ürün Özellikleri
+Parça No: ${partNumber}
+Raf / Stok Kodu: ${stockCode}
+Araç Markası: ${vehicleBrand}
+Parça Türü: ${partType}
+Üretici: ${producer}
+Durum: ${productCondition}
+Uyumluluk: ${compatibility}
+
+Kullanım Alanları
+• ${vehicleBrand} araç elektronik sistemleri
+• ${partType} yönetimi ve aktüatör kontrolü
+• Sensör ve sinyal iletimi
+• Orijinal fabrika donanımı
+
+TMS İthalat güvencesiyle kaliteli çıkma otomotiv elektronik yedek parçaları.`;
+}
+
 export const generateProductDetails = action({
   args: {
     oemNumber: v.string(),
+    shelfCode: v.optional(v.string()),
     additionalHint: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<GeneratedProductResult> => {
@@ -49,19 +101,11 @@ Görevin, verilen OEM / Parça Numarasını araştırıp en doğru araç markas�
 MEVCUT KATEGORİ LİSTESİ:
 ${categoriesContext}
 
-ÖRNEK STANDART ŞABLON (Bunu baz alarak içerik üret):
+ÜRÜN BİLGİSİ KURALLARI:
 - Ürün Başlığı: "[Araç Markası] [Parça Türü/ECU] [Üretici/Model] [OEM Kodu] Orijinal Çıkma Parça"
-- Açıklama Şablonu:
-"[Araç Markası] araçlar için [OEM No] numaralı [Parça Türü] orijinal çıkma yedek parça.
-Parçanın araçtaki fonksiyonu ve kontrol ettiği elektronik sistemler (enjeksiyon, ateşleme, fren, konfor vb.).
-Ürün profesyonel olarak sökülmüş, kontrolleri yapılmış ve kullanıma hazır durumdadır. Satın almadan önce parça numarasının kontrol edilmesi önerilir.
-
-Kullanım Alanları:
-- Uyumlu sistem 1
-- Uyumlu sistem 2
-- Motor & donanım yönetimi
-
-TMS İthalat güvencesiyle kaliteli çıkma otomotiv elektronik yedek parçaları."
+- manufacturer alanına ürünün üreticisini yaz (ör. "VAG (Audi / VW)", "Bosch", "Continental").
+- OEM kodundan araç markası veya modeli yüksek güvenle doğrulanamıyorsa tahmin etme; brand ve model için "Genel Uyumlu" kullan.
+- description alanı sunucuda sabit katalog şablonuyla yeniden oluşturulacaktır; yine de düz metin döndür.
 
 ZORUNLU ÇIKTI KURALLARI:
 1. SADECE geçerli ve temiz bir JSON nesnesi döndür (Markdown backtickleri veya harici metin yazma).
@@ -69,6 +113,7 @@ ZORUNLU ÇIKTI KURALLARI:
 {
   "title": string (Örn: "Renault Motor Beyni ECU Sagem S113717205D Orijinal Çıkma Motor Kontrol Ünitesi"),
   "brand": string (Örn: "Renault", "Volkswagen", "Mercedes-Benz", "BMW", "Audi", "Ford", "Fiat", "Peugeot"),
+  "manufacturer": string (Örn: "VAG (Audi / VW)", "Bosch", "Continental"),
   "model": string (Örn: "Megane 2 / Clio 3 1.6 16V"),
   "categorySlug": string (Yukarıdaki mevcut kategori sluglarından en uygun olanı),
   "condition": string (Varsayılan: "Orijinal Çıkma"),
@@ -82,6 +127,7 @@ ZORUNLU ÇIKTI KURALLARI:
 
     const userMessage = `Lütfen aşağıdaki OEM / Parça Numarası için ürün bilgilerini üret:
 OEM / Parça Numarası: ${args.oemNumber.trim()}
+Raf / Stok Kodu: ${args.shelfCode?.trim().toUpperCase() || "Belirtilmemiş"}
 ${args.additionalHint ? `Ekstra Bilgi / Not: ${args.additionalHint}` : ""}`;
 
     let content = "";
@@ -179,17 +225,36 @@ ${args.additionalHint ? `Ekstra Bilgi / Not: ${args.additionalHint}` : ""}`;
       matchedCat = categories[0];
     }
 
+    const resolvedBrand = typeof parsed.brand === "string" && parsed.brand.trim() && parsed.brand.trim() !== "Genel"
+      ? parsed.brand.trim()
+      : "Genel Uyumlu";
+    const resolvedManufacturer = typeof parsed.manufacturer === "string" && parsed.manufacturer.trim()
+      ? parsed.manufacturer.trim()
+      : "Orijinal ekipman üreticisi";
+    const resolvedModel = typeof parsed.model === "string" && parsed.model.trim() !== "Genel Uyumlu"
+      ? parsed.model.trim()
+      : "";
+
     return {
       success: true,
       oemNumber: args.oemNumber.trim(),
       title: parsed.title || `${args.oemNumber} Otomotiv Parçası`,
-      brand: parsed.brand || "Genel",
-      model: parsed.model || "",
+      brand: resolvedBrand,
+      manufacturer: resolvedManufacturer,
+      model: resolvedModel,
       categoryId: matchedCat?._id,
       categoryName: matchedCat?.name || "Oto Elektronik",
       categorySlug: matchedCat?.slug || "oto-elektronik",
       condition: parsed.condition || "Orijinal Çıkma",
-      description: parsed.description || "",
+      description: buildCatalogDescription({
+        brand: resolvedBrand,
+        manufacturer: resolvedManufacturer,
+        oemNumber: args.oemNumber,
+        categoryName: matchedCat?.name || "Oto Elektronik",
+        shelfCode: args.shelfCode,
+        condition: parsed.condition || "Orijinal Çıkma",
+        model: resolvedModel,
+      }),
       metaTitle: parsed.metaTitle || `${args.oemNumber} Orijinal Çıkma Parça | TMS İthalat`,
       metaDescription: parsed.metaDescription || "",
       metaKeywords: parsed.metaKeywords || "",

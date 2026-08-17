@@ -59,6 +59,10 @@ export default defineSchema({
     metaKeywords: v.optional(v.string()), // Meta Kelimeleri (virgülle ayrılmış)
     tags: v.optional(v.array(v.string())), // Ürün Etiketleri (Tags)
 
+    // Kalite & İnceleme Kontrol Alanları
+    needsReview: v.optional(v.boolean()), // Etiket silik/okunamadı veya şüpheli mi? (true/false)
+    reviewReason: v.optional(v.string()), // İnceleme sebebi (Örn: "Etiket silik / parlamış", "OEM doğrulanamadı")
+
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -67,7 +71,8 @@ export default defineSchema({
     .index("by_shelfCode", ["shelfCode"])
     .index("by_categoryId", ["categoryId"])
     .index("by_brand", ["brand"])
-    .index("by_inStock", ["inStock"]),
+    .index("by_inStock", ["inStock"])
+    .index("by_needsReview", ["needsReview"]),
 
   // 4. Site Genel Ayarları
   siteSettings: defineTable({

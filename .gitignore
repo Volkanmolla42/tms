@@ -39,3 +39,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Local, re-runnable data.zip import manifests and OCR pilot reports
+/.tms-import/
+
+# Product photos live on the aapanel server; never commit the catalog media.
+/public/uploads/products/
+
+# OCR models
+*.traineddata
+temp_sample/
+

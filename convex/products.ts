@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Doc, Id } from "./_generated/dataModel";
+import { paginationOptsValidator } from "convex/server";
 
 // Helper to resolve product image URLs from storage IDs
 async function resolveProductImages(ctx: any, p: Doc<"products">) {
@@ -29,6 +30,202 @@ async function resolveProductImages(ctx: any, p: Doc<"products">) {
   };
 }
 
+export const listPaginated = query({
+  args: {
+    paginationOpts: paginationOptsValidator,
+    categorySlug: v.optional(v.string()),
+    categoryId: v.optional(v.id("categories")),
+    brand: v.optional(v.string()),
+    condition: v.optional(v.string()),
+    inStockOnly: v.optional(v.boolean()),
+    searchTerm: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    let paginated;
+
+    if (args.categoryId) {
+      paginated = await ctx.db
+        .query("products")
+        .withIndex("by_categoryId", (idx) => idx.eq("categoryId", args.categoryId!))
+        .order("desc")
+        .paginate(args.paginationOpts);
+    } else if (args.categorySlug) {
+      const category = await ctx.db
+        .query("categories")
+        .withIndex("by_slug", (idx) => idx.eq("slug", args.categorySlug!))
+        .first();
+
+      if (category) {
+        paginated = await ctx.db
+          .query("products")
+          .withIndex("by_categoryId", (idx) => idx.eq("categoryId", category._id))
+          .order("desc")
+          .paginate(args.paginationOpts);
+      } else {
+        paginated = await ctx.db
+          .query("products")
+          .order("desc")
+          .paginate(args.paginationOpts);
+      }
+    } else if (args.brand && args.brand !== "Tümü") {
+      paginated = await ctx.db
+        .query("products")
+        .withIndex("by_brand", (idx) => idx.eq("brand", args.brand!))
+        .order("desc")
+        .paginate(args.paginationOpts);
+    } else {
+      paginated = await ctx.db
+        .query("products")
+        .withIndex("by_needsReview", (idx) => idx.eq("needsReview", false))
+        .order("desc")
+        .paginate(args.paginationOpts);
+    }
+
+    const resolvedPage = await Promise.all(
+      paginated.page.map((p) => resolveProductImages(ctx, p))
+    );
+
+    return {
+      ...paginated,
+      page: resolvedPage,
+    };
+  },
+});
+
+export const getProductsPage = query({
+  args: {
+    page: v.optional(v.number()),
+    pageSize: v.optional(v.number()),
+    categorySlug: v.optional(v.string()),
+    categoryId: v.optional(v.id("categories")),
+    brand: v.optional(v.string()),
+    condition: v.optional(v.string()),
+    inStockOnly: v.optional(v.boolean()),
+    searchTerm: v.optional(v.string()),
+    sortBy: v.optional(v.string()),
+    includeReview: v.optional(v.boolean()),
+    onlyReview: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const page = Math.max(1, args.page || 1);
+    const pageSize = args.pageSize || 24;
+
+    let items: Doc<"products">[] = [];
+
+    if (args.categoryId) {
+      items = await ctx.db
+        .query("products")
+        .withIndex("by_categoryId", (idx) => idx.eq("categoryId", args.categoryId!))
+        .order("desc")
+        .collect();
+    } else if (args.categorySlug) {
+      const category = await ctx.db
+        .query("categories")
+        .withIndex("by_slug", (idx) => idx.eq("slug", args.categorySlug!))
+        .first();
+
+      if (category) {
+        items = await ctx.db
+          .query("products")
+          .withIndex("by_categoryId", (idx) => idx.eq("categoryId", category._id))
+          .order("desc")
+          .collect();
+      } else {
+        items = [];
+      }
+    } else if (args.brand && args.brand !== "Tümü") {
+      items = await ctx.db
+        .query("products")
+        .withIndex("by_brand", (idx) => idx.eq("brand", args.brand!))
+        .order("desc")
+        .collect();
+    } else if (args.onlyReview) {
+      items = await ctx.db
+        .query("products")
+        .withIndex("by_needsReview", (idx) => idx.eq("needsReview", true))
+        .order("desc")
+        .collect();
+    } else if (args.includeReview) {
+      items = await ctx.db
+        .query("products")
+        .order("desc")
+        .collect();
+    } else {
+      items = await ctx.db
+        .query("products")
+        .withIndex("by_needsReview", (idx) => idx.eq("needsReview", false))
+        .order("desc")
+        .collect();
+    }
+
+    // Filter in memory for condition, inStock, and search term
+    let filtered = items;
+
+    if (args.condition && args.condition !== "Tümü") {
+      filtered = filtered.filter((p) => p.condition === args.condition);
+    }
+
+    if (args.inStockOnly) {
+      filtered = filtered.filter((p) => p.inStock);
+    }
+
+    if (args.searchTerm && args.searchTerm.trim() !== "") {
+      const term = args.searchTerm.toLowerCase().trim();
+      filtered = filtered.filter((p) => {
+        const titleMatch = p.title.toLowerCase().includes(term);
+        const oemMatch = p.oemNumber.toLowerCase().includes(term);
+        const shelfMatch = (p.shelfCode || "").toLowerCase().includes(term);
+        const tagMatch = (p.tags || []).some((t) => t.toLowerCase().includes(term));
+        return titleMatch || oemMatch || shelfMatch || tagMatch;
+      });
+    }
+
+    // Sorting
+    switch (args.sortBy) {
+      case "oem-asc":
+        filtered.sort((a, b) => (a.oemNumber || "").localeCompare(b.oemNumber || ""));
+        break;
+      case "title-asc":
+        filtered.sort((a, b) => a.title.localeCompare(b.title, "tr"));
+        break;
+      case "title-desc":
+        filtered.sort((a, b) => b.title.localeCompare(a.title, "tr"));
+        break;
+      case "date-desc":
+      default:
+        break;
+    }
+
+    const totalItems = filtered.length;
+    const totalPages = Math.ceil(totalItems / pageSize) || 1;
+    const startIndex = (page - 1) * pageSize;
+    const pageItems = filtered.slice(startIndex, startIndex + pageSize);
+
+    const resolvedItems = await Promise.all(
+      pageItems.map((p) => resolveProductImages(ctx, p))
+    );
+
+    return {
+      items: resolvedItems,
+      totalItems,
+      totalPages,
+      currentPage: page,
+      pageSize,
+    };
+  },
+});
+
+export const getTotalCount = query({
+  args: {},
+  handler: async (ctx) => {
+    const products = await ctx.db
+      .query("products")
+      .withIndex("by_needsReview", (idx) => idx.eq("needsReview", false))
+      .collect();
+    return products.length;
+  },
+});
+
 export const list = query({
   args: {
     categorySlug: v.optional(v.string()),
@@ -46,7 +243,7 @@ export const list = query({
       items = await ctx.db
         .query("products")
         .withIndex("by_categoryId", (q) => q.eq("categoryId", args.categoryId!))
-        .take(args.limit ?? 100);
+        .take(args.limit ?? 200);
     } else if (args.categorySlug) {
       const category = await ctx.db
         .query("categories")
@@ -57,7 +254,7 @@ export const list = query({
         items = await ctx.db
           .query("products")
           .withIndex("by_categoryId", (q) => q.eq("categoryId", category._id))
-          .take(args.limit ?? 100);
+          .take(args.limit ?? 200);
       } else {
         items = [];
       }
@@ -65,12 +262,19 @@ export const list = query({
       items = await ctx.db
         .query("products")
         .withIndex("by_brand", (q) => q.eq("brand", args.brand!))
-        .take(args.limit ?? 100);
+        .take(args.limit ?? 200);
     } else {
-      items = await ctx.db.query("products").take(args.limit ?? 100);
+      items = await ctx.db.query("products").take(args.limit ?? 300);
     }
 
     let filtered = items;
+
+    // Prioritize products with images strictly to the top
+    filtered.sort((a, b) => {
+      const aHasImg = a.images && a.images.length > 0 ? 1 : 0;
+      const bHasImg = b.images && b.images.length > 0 ? 1 : 0;
+      return bHasImg - aHasImg;
+    });
 
     if (args.condition && args.condition !== "Tümü") {
       filtered = filtered.filter((p) =>

@@ -1,8 +1,8 @@
 import { mutation } from "./_generated/server";
 import { v } from "convex/values";
 
-// Default category seeds for the imported data
-const REQUIRED_CATEGORIES = [
+// Standard Categories
+export const STANDARD_CATEGORIES = [
   { name: "Motor Beyinleri (ECU)", slug: "motor-beyinleri-ecu", order: 1, desc: "Tüm araç markalarına ait orijinal test edilmiş motor kontrol üniteleri (ECU)." },
   { name: "ABS / ESP Beyinleri", slug: "abs-esp-beyinleri", order: 2, desc: "ABS hidrolik blok ve elektronik kontrol üniteleri." },
   { name: "Gösterge Panelleri", slug: "gosterge-panelleri", order: 3, desc: "KM saatleri, dijital ve analog gösterge panelleri." },
@@ -19,18 +19,56 @@ const REQUIRED_CATEGORIES = [
   { name: "Oto Elektronik Parçaları", slug: "oto-elektronik-genel", order: 14, desc: "Çeşitli sensör, soket, trim ve elektronik yedek parçalar." },
 ];
 
-export const initCategories = mutation({
+// Standard Popular Brands
+export const STANDARD_BRANDS = [
+  { name: "Mercedes-Benz", slug: "mercedes-benz", logo: "https://upload.wikimedia.org/wikipedia/commons/9/90/Mercedes-Logo.svg", order: 1 },
+  { name: "BMW", slug: "bmw", logo: "https://upload.wikimedia.org/wikipedia/commons/4/44/BMW.svg", order: 2 },
+  { name: "Audi", slug: "audi", logo: "https://upload.wikimedia.org/wikipedia/commons/9/92/Audi-Logo_2016.svg", order: 3 },
+  { name: "Volkswagen", slug: "volkswagen", logo: "https://upload.wikimedia.org/wikipedia/commons/6/6d/Volkswagen_logo_2019.svg", order: 4 },
+  { name: "Renault", slug: "renault", logo: "https://upload.wikimedia.org/wikipedia/commons/b/b7/Renault_2021_Textlogo.svg", order: 5 },
+  { name: "Fiat", slug: "fiat", logo: "https://upload.wikimedia.org/wikipedia/commons/1/12/Fiat_Automobiles_logo.svg", order: 6 },
+  { name: "Opel", slug: "opel", logo: "https://upload.wikimedia.org/wikipedia/commons/e/e0/Opel_2020.svg", order: 7 },
+  { name: "Ford", slug: "ford", logo: "https://upload.wikimedia.org/wikipedia/commons/a/a0/Ford_Motor_Company_Logo.svg", order: 8 },
+  { name: "Peugeot", slug: "peugeot", logo: "https://upload.wikimedia.org/wikipedia/commons/e/e7/Peugeot_2021.svg", order: 9 },
+  { name: "Citroën", slug: "citroen", logo: "https://upload.wikimedia.org/wikipedia/commons/a/af/Citro%C3%ABn_2022.svg", order: 10 },
+  { name: "Hyundai", slug: "hyundai", logo: "https://upload.wikimedia.org/wikipedia/commons/4/44/Hyundai_Motor_Company_logo.svg", order: 11 },
+  { name: "Toyota", slug: "toyota", logo: "https://upload.wikimedia.org/wikipedia/commons/e/e7/Toyota.svg", order: 12 },
+  { name: "Honda", slug: "honda", logo: "https://upload.wikimedia.org/wikipedia/commons/7/7b/Honda_Logo.svg", order: 13 },
+  { name: "Nissan", slug: "nissan", logo: "https://upload.wikimedia.org/wikipedia/commons/8/8c/Nissan_2020_logo.svg", order: 14 },
+  { name: "Volvo", slug: "volvo", logo: "https://upload.wikimedia.org/wikipedia/commons/8/80/Volvo_logo_2021.svg", order: 15 },
+  { name: "Skoda", slug: "skoda", logo: "https://upload.wikimedia.org/wikipedia/commons/2/2f/Skoda_Auto_logo_%282023%29.svg", order: 16 },
+  { name: "Seat", slug: "seat", logo: "https://upload.wikimedia.org/wikipedia/commons/4/47/SEAT_Logo_2017.svg", order: 17 },
+  { name: "Kia", slug: "kia", logo: "https://upload.wikimedia.org/wikipedia/commons/4/47/KIA_logo2.svg", order: 18 },
+];
+
+// Clean all products in batches of 500
+export const cleanProductsBatch = mutation({
+  args: {
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = args.limit || 500;
+    const products = await ctx.db.query("products").take(limit);
+    for (const p of products) {
+      await ctx.db.delete(p._id);
+    }
+    return { deleted: products.length, remaining: products.length === limit };
+  },
+});
+
+// Ensure Categories & Brands
+export const initCategoriesAndBrands = mutation({
   args: {},
   handler: async (ctx) => {
-    const existing = await ctx.db.query("categories").collect();
-    const map: Record<string, string> = {};
+    const existingCats = await ctx.db.query("categories").collect();
+    const categoryMap: Record<string, string> = {};
 
-    for (const cat of existing) {
-      map[cat.slug] = cat._id;
+    for (const cat of existingCats) {
+      categoryMap[cat.slug] = cat._id;
     }
 
-    for (const req of REQUIRED_CATEGORIES) {
-      if (!map[req.slug]) {
+    for (const req of STANDARD_CATEGORIES) {
+      if (!categoryMap[req.slug]) {
         const id = await ctx.db.insert("categories", {
           name: req.name,
           slug: req.slug,
@@ -38,14 +76,36 @@ export const initCategories = mutation({
           order: req.order,
           isActive: true,
         });
-        map[req.slug] = id;
+        categoryMap[req.slug] = id;
       }
     }
 
-    return map;
+    const existingBrands = await ctx.db.query("brands").collect();
+    const brandMap: Record<string, string> = {};
+
+    for (const b of existingBrands) {
+      brandMap[b.slug] = b._id;
+    }
+
+    for (const b of STANDARD_BRANDS) {
+      if (!brandMap[b.slug]) {
+        const id = await ctx.db.insert("brands", {
+          name: b.name,
+          slug: b.slug,
+          logoUrl: b.logo,
+          popular: true,
+          order: b.order,
+          isActive: true,
+        });
+        brandMap[b.slug] = id;
+      }
+    }
+
+    return { categoryMap };
   },
 });
 
+// Bulk Insert Formatted Products
 export const batchInsertProducts = mutation({
   args: {
     products: v.array(
@@ -65,26 +125,16 @@ export const batchInsertProducts = mutation({
         metaDescription: v.optional(v.string()),
         metaKeywords: v.optional(v.string()),
         tags: v.optional(v.array(v.string())),
+        needsReview: v.optional(v.boolean()),
+        reviewReason: v.optional(v.string()),
       })
     ),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
     let inserted = 0;
-    let skipped = 0;
 
     for (const p of args.products) {
-      // Check if product already exists by slug or oemNumber
-      const existing = await ctx.db
-        .query("products")
-        .withIndex("by_oemNumber", (q) => q.eq("oemNumber", p.oemNumber))
-        .first();
-
-      if (existing) {
-        skipped++;
-        continue;
-      }
-
       await ctx.db.insert("products", {
         ...p,
         createdAt: now,
@@ -93,6 +143,6 @@ export const batchInsertProducts = mutation({
       inserted++;
     }
 
-    return { inserted, skipped };
+    return { inserted };
   },
 });
