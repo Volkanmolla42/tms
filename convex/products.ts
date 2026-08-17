@@ -139,23 +139,18 @@ export const getProductsPage = query({
         .withIndex("by_brand", (idx) => idx.eq("brand", args.brand!))
         .order("desc")
         .collect();
-    } else if (args.onlyReview) {
-      items = await ctx.db
-        .query("products")
-        .withIndex("by_needsReview", (idx) => idx.eq("needsReview", true))
-        .order("desc")
-        .collect();
-    } else if (args.includeReview) {
-      items = await ctx.db
-        .query("products")
-        .order("desc")
-        .collect();
     } else {
       items = await ctx.db
         .query("products")
-        .withIndex("by_needsReview", (idx) => idx.eq("needsReview", false))
         .order("desc")
         .collect();
+    }
+
+    // Review status filtering
+    if (args.onlyReview) {
+      items = items.filter((p) => p.needsReview === true);
+    } else if (!args.includeReview) {
+      items = items.filter((p) => p.needsReview !== true);
     }
 
     // Filter in memory for condition, inStock, and search term
@@ -193,6 +188,7 @@ export const getProductsPage = query({
         break;
       case "date-desc":
       default:
+        filtered.sort((a, b) => (b.createdAt || b._creationTime || 0) - (a.createdAt || a._creationTime || 0));
         break;
     }
 
@@ -218,11 +214,8 @@ export const getProductsPage = query({
 export const getTotalCount = query({
   args: {},
   handler: async (ctx) => {
-    const products = await ctx.db
-      .query("products")
-      .withIndex("by_needsReview", (idx) => idx.eq("needsReview", false))
-      .collect();
-    return products.length;
+    const products = await ctx.db.query("products").collect();
+    return products.filter((p) => p.needsReview !== true).length;
   },
 });
 
@@ -406,11 +399,14 @@ export const create = mutation({
     metaDescription: v.optional(v.string()),
     metaKeywords: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
+    needsReview: v.optional(v.boolean()),
+    reviewReason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
     return await ctx.db.insert("products", {
       ...args,
+      needsReview: args.needsReview ?? false,
       createdAt: now,
       updatedAt: now,
     });
@@ -436,6 +432,8 @@ export const update = mutation({
     metaDescription: v.optional(v.string()),
     metaKeywords: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
+    needsReview: v.optional(v.boolean()),
+    reviewReason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { id, ...fields } = args;

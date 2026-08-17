@@ -25,3 +25,5 @@ Convex agent skills for common tasks can be installed by running
 
 
 ASLA GİT PUSH GİBİ TEHLİKELİ GİT KOMUTLARI KULLANMA.
+
+asla convex prodda onay almadan işlem yapma. asla.
