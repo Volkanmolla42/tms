@@ -79,12 +79,13 @@ export const generateProductDetails = action({
     additionalHint: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<GeneratedProductResult> => {
-    const geminiApiKey = process.env.GEMINI_API_KEY;
     const openRouterApiKey = process.env.OPENROUTER_API_KEY;
+    const openAiApiKey = process.env.OPENAI_API_KEY;
+    const geminiApiKey = process.env.GEMINI_API_KEY;
 
-    if (!geminiApiKey && !openRouterApiKey) {
+    if (!openRouterApiKey && !openAiApiKey && !geminiApiKey) {
       throw new Error(
-        "Yapay zeka API anahtarı bulunamadı. Lütfen GEMINI_API_KEY veya OPENROUTER_API_KEY tanımlayınız."
+        "Yapay zeka API anahtarı bulunamadı. Lütfen OPENROUTER_API_KEY, OPENAI_API_KEY veya GEMINI_API_KEY tanımlayınız."
       );
     }
 
@@ -96,15 +97,16 @@ export const generateProductDetails = action({
       .join("\n");
 
     const systemPrompt = `Sen otomotiv elektronik parçaları (ECU, ABS, Airbag, BCM, Sigorta Kutusu, Şanzıman Beyni vb.) konusunda uzman bir teknik ürün yöneticisisin.
-Görevin, verilen OEM / Parça Numarasını araştırıp en doğru araç markası, model uyumluluğu, parça türü ve SEO uyumlu ürün bilgilerini eksiksiz JSON formatında üretmektir.
+Görevin, verilen OEM / Parça Numarasını WEB'DE CANLI ARAMA (Web Search) yaparak üretici parça katalogları, otomotiv parça siteleri ve çıkma parça veritabanlarından araştırıp doğrulamak, ardından en doğru araç markası, model uyumluluğu, parça türü ve SEO uyumlu ürün bilgilerini eksiksiz JSON formatında üretmektir.
 
 MEVCUT KATEGORİ LİSTESİ:
 ${categoriesContext}
 
 ÜRÜN BİLGİSİ KURALLARI:
+- Verilen OEM kodunu web'de mutlaka ara. Üreticisini (Bosch, VAG, Continental, Delphi, Siemens vb.) ve uyumlu araç modellerini kesinleştir.
 - Ürün Başlığı: "[Araç Markası] [Parça Türü/ECU] [Üretici/Model] [OEM Kodu] Orijinal Çıkma Parça"
-- manufacturer alanına ürünün üreticisini yaz (ör. "VAG (Audi / VW)", "Bosch", "Continental").
-- OEM kodundan araç markası veya modeli yüksek güvenle doğrulanamıyorsa tahmin etme; brand ve model için "Genel Uyumlu" kullan.
+- manufacturer alanına ürünün üreticisini yaz (ör. "VAG (Audi / VW)", "Bosch", "Continental", "Magneti Marelli").
+- OEM kodundan araç markası veya modeli web aramasında bulunamazsa tahmin etme; brand ve model için "Genel Uyumlu" kullan.
 - description alanı sunucuda sabit katalog şablonuyla yeniden oluşturulacaktır; yine de düz metin döndür.
 
 ZORUNLU ÇIKTI KURALLARI:
@@ -125,16 +127,83 @@ ZORUNLU ÇIKTI KURALLARI:
   "slug": string (Küçük harf, türkçe karaktersiz URL: "renault-sagem-s113717205d-motor-beyni-ecu")
 }`;
 
-    const userMessage = `Lütfen aşağıdaki OEM / Parça Numarası için ürün bilgilerini üret:
+    const userMessage = `Lütfen aşağıdaki OEM / Parça Numarasını webde araştırarak doğrulanmış ürün bilgilerini JSON olarak üret:
 OEM / Parça Numarası: ${args.oemNumber.trim()}
 Raf / Stok Kodu: ${args.shelfCode?.trim().toUpperCase() || "Belirtilmemiş"}
 ${args.additionalHint ? `Ekstra Bilgi / Not: ${args.additionalHint}` : ""}`;
 
     let content = "";
 
-    // 2. Call AI Service (Direct Free Google Gemini API with multi-model failover)
-    if (geminiApiKey) {
-      const googleModels = ["gemini-3.5-flash-lite", "gemini-3.5-flash", "gemini-3-flash-preview"];
+    // 1. Primary: OpenRouter with GPT-5.6 Luna + Web Search Tool
+    if (openRouterApiKey) {
+      try {
+        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${openRouterApiKey}`,
+            "HTTP-Referer": "https://tmsithalat.com",
+            "X-Title": "TMS Ithalat AI Product Generator",
+          },
+          body: JSON.stringify({
+            model: "openai/gpt-5.6-luna",
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userMessage },
+            ],
+            temperature: 0.1,
+            max_tokens: 2500,
+            response_format: { type: "json_object" },
+            tools: [
+              {
+                type: "openrouter:web_search",
+              },
+            ],
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          content = data.choices?.[0]?.message?.content || "";
+        }
+      } catch (e) {
+        // Fallback to next provider if OpenRouter fails
+      }
+    }
+
+    // 2. Fallback / Direct: OpenAI Direct API (if OPENAI_API_KEY exists and no content yet)
+    if (!content && openAiApiKey) {
+      try {
+        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${openAiApiKey}`,
+          },
+          body: JSON.stringify({
+            model: "gpt-5.6-luna",
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userMessage },
+            ],
+            temperature: 0.2,
+            max_tokens: 2500,
+            response_format: { type: "json_object" },
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          content = data.choices?.[0]?.message?.content || "";
+        }
+      } catch (e) {
+        // Fallback
+      }
+    }
+
+    // 3. Fallback: Google Gemini API if primary models did not produce content
+    if (!content && geminiApiKey) {
+      const googleModels = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-1.5-flash"];
       for (const model of googleModels) {
         try {
           const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`;
@@ -166,33 +235,6 @@ ${args.additionalHint ? `Ekstra Bilgi / Not: ${args.additionalHint}` : ""}`;
         } catch (e) {
           // Continue to next model
         }
-      }
-    }
-
-    // Fallback to OpenRouter if Google direct did not produce content
-    if (!content && openRouterApiKey) {
-      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${openRouterApiKey}`,
-          "HTTP-Referer": "https://tmsithalat.com",
-          "X-Title": "TMS Ithalat AI Product Generator",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-2.5-flash-lite",
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userMessage },
-          ],
-          temperature: 0.2,
-          max_tokens: 2500,
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        content = data.choices?.[0]?.message?.content || "";
       }
     }
 

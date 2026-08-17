@@ -16,16 +16,16 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
-import { generateWhatsAppLink } from "@/lib/utils";
+import { generateWhatsAppLink, formatPhoneNumber } from "@/lib/utils";
 
 export default function IletisimPage() {
   const settings = useQuery(api.siteSettings.get);
 
-  const whatsappNumber = settings?.whatsappNumber || "+905340653222";
-  const displayPhone = settings?.phone || "(0212) 861 32 72";
-  const displayEmail = settings?.email || "info@tmsithalat.com";
-  const displayAddress = settings?.address || "Hürriyet, İstiklal Cd. No:102, 34537 Büyükçekmece/İstanbul";
-  const workingHours = settings?.workingHours || "Pazartesi - Cumartesi: 08:30 - 19:00";
+  const whatsappNumber = settings?.whatsappNumber || "";
+  const displayPhone = settings?.phone || "";
+  const displayEmail = settings?.email || "";
+  const displayAddress = settings?.address || "";
+  const workingHours = settings?.workingHours || "";
 
   const mapQuery = encodeURIComponent(displayAddress);
 
@@ -81,14 +81,14 @@ export default function IletisimPage() {
               </p>
             </div>
             <div className="mt-6 pt-4 border-t border-white/20 flex items-center justify-between font-bold text-sm">
-              <span>{settings?.whatsappDisplay || "+90 534 065 32 22"}</span>
+              <span>{formatPhoneNumber(whatsappNumber)}</span>
               <ExternalLink className="w-4 h-4 opacity-80 group-hover:translate-x-0.5 transition-transform" />
             </div>
           </a>
 
           {/* Phone Card */}
           <a
-            href={`tel:${displayPhone.replace(/\s+/g, "")}`}
+            href={`tel:${displayPhone.replace(/[^0-9+]/g, "")}`}
             className="p-6 rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-600/20 flex flex-col justify-between hover:bg-blue-700 hover:scale-[1.02] transition-all group"
           >
             <div className="space-y-3">
@@ -158,7 +158,6 @@ export default function IletisimPage() {
                     <p className="text-slate-900 font-semibold text-sm leading-relaxed mt-1">
                       {workingHours}
                     </p>
-                    <p className="text-xs text-slate-500 mt-0.5">Pazar: Kapalı</p>
                   </div>
                 </div>
 

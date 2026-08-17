@@ -21,11 +21,8 @@ import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 
 export default function KurumsalPage() {
-  const settings = useQuery(api.siteSettings.get);
-
-  const siteName = settings?.siteName || "TMS İthalat";
-  const experienceYears = settings?.stats?.experienceYears || "20+";
-  const productsCount = settings?.stats?.productsCount || "15.000+";
+  const experienceYears = "20+";
+  const productsCount = "15.000+";
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
@@ -48,7 +45,7 @@ export default function KurumsalPage() {
         <div className="max-w-4xl mx-auto text-center space-y-4 relative z-10">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-950 border border-blue-500/30 text-blue-300 text-xs font-bold uppercase">
             <Building className="w-3.5 h-3.5" />
-            <span>{siteName.toUpperCase()} HAKKINDA</span>
+            <span>TMS İTHALAT HAKKINDA</span>
           </div>
           <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-white">
             {experienceYears} Yıllık Tecrübe ile{" "}
@@ -69,7 +66,7 @@ export default function KurumsalPage() {
               Hakkımızda
             </h2>
             <p className="text-sm text-slate-600 leading-relaxed">
-              <strong>{siteName}</strong>, otomotiv elektronik sektöründe {experienceYears} yılı aşkın tecrübesiyle motor kontrol üniteleri (ECU), ABS/ESP fren modülleri, Airbag güvenlik beyinleri, BCM/BSI gövde modülleri ve şanzıman mekatronik beyinleri tedariğinde Türkiye&apos;nin öncü kuruluşlarındandır.
+              <strong>TMS İthalat</strong>, otomotiv elektronik sektöründe {experienceYears} yılı aşkın tecrübesiyle motor kontrol üniteleri (ECU), ABS/ESP fren modülleri, Airbag güvenlik beyinleri, BCM/BSI gövde modülleri ve şanzıman mekatronik beyinleri tedariğinde Türkiye&apos;nin öncü kuruluşlarındandır.
             </p>
             <p className="text-sm text-slate-600 leading-relaxed">
               Geniş merkez depomuzda yer alan {productsCount}&apos;in üzerinde hazır stok ile arızalı veya hasarlı araçların en kısa sürede orijinal parçalarına kavuşmasını sağlıyoruz.

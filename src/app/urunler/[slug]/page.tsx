@@ -61,8 +61,8 @@ export default function ProductDetailPage({ params }: PageProps) {
       : "skip"
   );
 
-  const whatsappNumber = settings?.whatsappNumber || "905340653222";
-  const displayPhone = settings?.phone || "+90 534 065 32 22";
+  const whatsappNumber = settings?.whatsappNumber || "";
+  const displayPhone = settings?.phone || "";
 
   // Dynamic SEO Title
   useEffect(() => {

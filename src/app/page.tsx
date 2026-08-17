@@ -216,7 +216,7 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6 text-center divide-y md:divide-y-0 md:divide-x divide-slate-800">
           <div className="pt-2 md:pt-0">
             <span className="text-3xl sm:text-4xl font-black text-white block">
-              {settings?.stats?.productsCount || "15.000+"}
+              15.000+
             </span>
             <span className="text-[11px] uppercase font-bold text-slate-400 mt-1 block tracking-wider">
               STOKLU ÜRÜN
@@ -225,7 +225,7 @@ export default function HomePage() {
 
           <div className="pt-2 md:pt-0">
             <span className="text-3xl sm:text-4xl font-black text-white block">
-              {settings?.stats?.brandsCount || (brands ? `${brands.length}+` : "45+")}
+              {brands && brands.length > 0 ? `${brands.length}+` : "45+"}
             </span>
             <span className="text-[11px] uppercase font-bold text-slate-400 mt-1 block tracking-wider">
               ARAÇ MARKASI
@@ -234,7 +234,7 @@ export default function HomePage() {
 
           <div className="pt-2 md:pt-0">
             <span className="text-3xl sm:text-4xl font-black text-white block">
-              {settings?.stats?.ecuCount || "1000+"}
+              1000+
             </span>
             <span className="text-[11px] uppercase font-bold text-slate-400 mt-1 block tracking-wider">
               ECU MODELİ
@@ -243,7 +243,7 @@ export default function HomePage() {
 
           <div className="pt-2 md:pt-0">
             <span className="text-3xl sm:text-4xl font-black text-white block">
-              {settings?.stats?.experienceYears || "20+"}
+              20+
             </span>
             <span className="text-[11px] uppercase font-bold text-slate-400 mt-1 block tracking-wider">
               YILLIK TECRÜBE

@@ -18,9 +18,9 @@ export default function Footer() {
   const settings = useQuery(api.siteSettings.get);
   const categories = useQuery(api.categories.list, { onlyActive: true });
 
-  const phone = settings?.phone || "(0212) 861 32 72";
-  const email = settings?.email || "info@tmsithalat.com";
-  const address = settings?.address || "Hürriyet, İstiklal Cd. No:102, 34537 Büyükçekmece/İstanbul";
+  const phone = settings?.phone || "";
+  const email = settings?.email || "";
+  const address = settings?.address || "";
 
   return (
     <footer className="w-full bg-[#050b14] text-slate-300 border-t border-slate-900 mt-auto">
@@ -82,7 +82,7 @@ export default function Footer() {
               />
             </Link>
             <p className="text-xs text-slate-400 leading-relaxed">
-              {settings?.slogan || "Oto elektronik parçalar konusunda güvenilir çözüm ortağınız."}
+              Oto elektronik parçalar konusunda güvenilir çözüm ortağınız.
             </p>
           </div>
 

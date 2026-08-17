@@ -13,7 +13,7 @@ export default function FloatingWhatsApp() {
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
   const settings = useQuery(api.siteSettings.get);
-  const whatsappNumber = settings?.whatsappNumber || "+905340653222";
+  const whatsappNumber = settings?.whatsappNumber || "";
 
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();

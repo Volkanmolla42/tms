@@ -15,28 +15,22 @@ export default function AdminSettingsPage() {
   const settings = useQuery(api.siteSettings.get);
   const updateSettings = useMutation(api.siteSettings.update);
 
-  const [siteName, setSiteName] = useState("");
-  const [slogan, setSlogan] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [address, setAddress] = useState("");
   const [workingHours, setWorkingHours] = useState("");
   const [whatsappNumber, setWhatsappNumber] = useState("");
-  const [whatsappDisplay, setWhatsappDisplay] = useState("");
 
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (settings) {
-      setSiteName(settings.siteName || "TMS İthalat");
-      setSlogan(settings.slogan || "Oto elektronik parçalar konusunda güvenilir çözüm ortağınız.");
-      setPhone(settings.phone || "(0212) 861 32 72");
-      setEmail(settings.email || "info@tmsithalat.com");
-      setAddress(settings.address || "Hürriyet, İstiklal Cd. No:102, 34537 Büyükçekmece/İstanbul");
-      setWorkingHours(settings.workingHours || "Pzt - Cmt: 08:30 - 18:30");
-      setWhatsappNumber(settings.whatsappNumber || "+905340653222");
-      setWhatsappDisplay(settings.whatsappDisplay || "0534 065 32 22");
+      setPhone(settings.phone || "");
+      setEmail(settings.email || "");
+      setAddress(settings.address || "");
+      setWorkingHours(settings.workingHours || "");
+      setWhatsappNumber(settings.whatsappNumber || "");
     }
   }, [settings]);
 
@@ -46,14 +40,11 @@ export default function AdminSettingsPage() {
 
     try {
       await updateSettings({
-        siteName,
-        slogan,
         phone,
         email,
         address,
         workingHours,
         whatsappNumber,
-        whatsappDisplay,
       });
 
       setSaveSuccess(true);
@@ -94,21 +85,14 @@ export default function AdminSettingsPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="font-semibold text-slate-700 block mb-1">Şirket Adı</label>
-              <Input
-                value={siteName}
-                onChange={(e) => setSiteName(e.target.value)}
-                className="bg-white border-slate-200"
-              />
-            </div>
 
             <div>
-              <label className="font-semibold text-slate-700 block mb-1">Slogan</label>
+              <label className="font-semibold text-slate-700 block mb-1">WhatsApp Numarası</label>
               <Input
-                value={slogan}
-                onChange={(e) => setSlogan(e.target.value)}
-                className="bg-white border-slate-200"
+                placeholder="0534 065 32 22"
+                value={whatsappNumber}
+                onChange={(e) => setWhatsappNumber(e.target.value)}
+                className="bg-white border-slate-200 font-mono"
               />
             </div>
 
@@ -128,26 +112,6 @@ export default function AdminSettingsPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="bg-white border-slate-200"
-              />
-            </div>
-
-            <div>
-              <label className="font-semibold text-slate-700 block mb-1">WhatsApp Numarası (API)</label>
-              <Input
-                placeholder="+905340653222"
-                value={whatsappNumber}
-                onChange={(e) => setWhatsappNumber(e.target.value)}
-                className="bg-white border-slate-200 font-mono"
-              />
-            </div>
-
-            <div>
-              <label className="font-semibold text-slate-700 block mb-1">WhatsApp Görünür Metin</label>
-              <Input
-                placeholder="0534 065 32 22"
-                value={whatsappDisplay}
-                onChange={(e) => setWhatsappDisplay(e.target.value)}
-                className="bg-white border-slate-200 font-mono"
               />
             </div>
 

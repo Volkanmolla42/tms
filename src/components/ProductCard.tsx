@@ -14,7 +14,7 @@ export interface ProductCardProps {
 
 export default function ProductCard({ product }: ProductCardProps) {
   const settings = useQuery(api.siteSettings.get);
-  const whatsappNumber = settings?.whatsappNumber || "+905340653222";
+  const whatsappNumber = settings?.whatsappNumber || "";
 
   return (
     <div className="product-card-clean rounded-xl p-4 flex flex-col justify-between group bg-white border border-slate-200/80 hover:border-blue-400 hover:shadow-md transition-all">

@@ -77,7 +77,7 @@ function ProductCatalogContent() {
 
   const brands = useQuery(api.brands.list);
   const settings = useQuery(api.siteSettings.get);
-  const whatsappNumber = settings?.whatsappNumber || "905321234567";
+  const whatsappNumber = settings?.whatsappNumber || "";
 
   const products = pageData?.items;
   const totalItems = pageData?.totalItems ?? 0;
