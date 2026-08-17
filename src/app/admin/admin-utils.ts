@@ -55,6 +55,14 @@ export const LOCAL_BRAND_LOGOS: Record<string, string> = {
   jeep: "/images/brands/jeep.svg",
   iveco: "/images/brands/iveco.svg",
   subaru: "/images/brands/subaru.svg",
+  genel: "/images/brands/genel.svg",
+  "genel-uyumlu": "/images/brands/genel.svg",
+  evrensel: "/images/brands/genel.svg",
+  universal: "/images/brands/genel.svg",
+  "tum-araclar": "/images/brands/genel.svg",
+  "tum-markalar": "/images/brands/genel.svg",
+  "coklu-uyumlu": "/images/brands/genel.svg",
+  diger: "/images/brands/genel.svg",
 };
 
 
