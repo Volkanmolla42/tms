@@ -28,8 +28,8 @@ export default function FloatingWhatsApp() {
     setMessage("");
   };
 
-  // Hide on admin pages
-  if (pathname?.startsWith("/admin")) {
+  // Hide on admin and login pages
+  if (pathname?.startsWith("/admin") || pathname === "/login") {
     return null;
   }
 

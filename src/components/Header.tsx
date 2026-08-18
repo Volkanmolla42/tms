@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Search, Menu, X, Settings } from "lucide-react";
+import { Search, Menu, X } from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 
@@ -68,15 +68,6 @@ export default function Header() {
             >
               <Search className="w-5 h-5" />
             </button>
-
-            <Link
-              href="/admin"
-              className="hidden sm:flex items-center gap-1 text-xs text-slate-400 hover:text-slate-800 font-medium px-2 py-1 rounded border border-slate-200 hover:border-slate-300"
-              title="Yönetici Paneli"
-            >
-              <Settings className="w-3.5 h-3.5" />
-              <span>Admin</span>
-            </Link>
 
             {/* Mobile Menu Button */}
             <button

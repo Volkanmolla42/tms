@@ -182,8 +182,8 @@ export default function LiveChatWidget() {
 
   const unreadCount = activeConversation?.unreadCountVisitor || 0;
 
-  // Hide on admin panel pages
-  if (pathname?.startsWith("/admin")) {
+  // Hide on admin panel and login pages
+  if (pathname?.startsWith("/admin") || pathname === "/login") {
     return null;
   }
 

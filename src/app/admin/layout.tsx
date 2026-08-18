@@ -1,10 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
-  LayoutDashboard,
   Package,
   MessageSquare,
   Layers,
@@ -14,9 +13,12 @@ import {
   Menu,
   X,
   ChevronRight,
-  Store,
+  LogOut,
+  User,
+  Loader2,
 } from "lucide-react";
-import { useQuery } from "convex/react";
+import { useQuery, useConvexAuth } from "convex/react";
+import { useAuthActions } from "@convex-dev/auth/react";
 import { api } from "../../../convex/_generated/api";
 import RoutartLogo from "@/components/RoutartLogo";
 
@@ -78,7 +80,32 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const { isLoading: authLoading, isAuthenticated } = useConvexAuth();
+  const { signOut } = useAuthActions();
+  const viewer = useQuery(api.users.viewer);
+
+  // Client-side authentication guard
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      router.push("/login");
+    }
+  }, [authLoading, isAuthenticated, router]);
+
+  const handleLogout = async () => {
+    try {
+      setLoggingOut(true);
+      await signOut();
+      router.push("/login");
+      router.refresh();
+    } catch (err) {
+      console.error("Çıkış hatası:", err);
+      setLoggingOut(false);
+    }
+  };
 
   const conversations = useQuery(api.chats.listConversations, {
     status: "active",
@@ -91,6 +118,16 @@ export default function AdminLayout({
     allItems.find((item) =>
       item.exact ? pathname === item.href : pathname.startsWith(item.href)
     ) || allItems[0];
+
+  // Auth Loading Screen
+  if (authLoading || (!isAuthenticated && typeof window !== "undefined")) {
+    return (
+      <div className="h-screen w-full bg-slate-50 flex flex-col items-center justify-center text-slate-500 gap-2 text-xs">
+        <Loader2 className="w-5 h-5 animate-spin text-slate-600" />
+        <span>Yükleniyor...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen w-full bg-slate-50/70 text-slate-900 flex flex-col md:flex-row antialiased font-sans overflow-hidden">
@@ -128,11 +165,23 @@ export default function AdminLayout({
           <Link
             href="/"
             target="_blank"
-            className="text-slate-500 hover:text-slate-900 p-1"
-            title="Mağaza"
+            className="text-slate-400 hover:text-white p-1"
+            title="Mağazayı Görüntüle"
           >
             <ExternalLink className="w-4 h-4" />
           </Link>
+          <button
+            onClick={handleLogout}
+            disabled={loggingOut}
+            className="text-rose-400 hover:text-rose-300 p-1 ml-1"
+            title="Çıkış Yap"
+          >
+            {loggingOut ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <LogOut className="w-4 h-4" />
+            )}
+          </button>
         </div>
       </header>
 
@@ -225,10 +274,45 @@ export default function AdminLayout({
           </nav>
         </div>
 
-        {/* Sidebar Footer */}
-        <div className="p-4 border-t border-slate-800 flex items-center justify-between bg-slate-950/30 shrink-0">
-          <span className="text-[11px] text-slate-400 font-medium">Geliştirici:</span>
-          <RoutartLogo variant="dark" size="sm" showTagline={false} />
+        {/* Sidebar Footer with User Info & Logout */}
+        <div className="border-t border-slate-800 bg-slate-950/50 shrink-0">
+          {/* User & Logout section */}
+          <div className="p-3 border-b border-slate-800/60 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-7 h-7 rounded-lg bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 shrink-0">
+                <User className="w-3.5 h-3.5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-[11px] font-semibold text-white truncate">
+                  {viewer?.email || "admintms@routart.com"}
+                </div>
+                <div className="text-[10px] text-slate-400 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                  <span>Yönetici</span>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={handleLogout}
+              disabled={loggingOut}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors shrink-0 cursor-pointer"
+              title="Güvenli Çıkış Yap"
+              aria-label="Çıkış Yap"
+            >
+              {loggingOut ? (
+                <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
+              ) : (
+                <LogOut className="w-4 h-4" />
+              )}
+            </button>
+          </div>
+
+          {/* Developer credit */}
+          <div className="px-4 py-2.5 flex items-center justify-between">
+            <span className="text-[10px] text-slate-500 font-medium">Geliştirici:</span>
+            <RoutartLogo variant="dark" size="sm" showTagline={false} />
+          </div>
         </div>
       </aside>
 
@@ -263,6 +347,20 @@ export default function AdminLayout({
               <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
               <span>Mağaza</span>
             </Link>
+
+            <button
+              onClick={handleLogout}
+              disabled={loggingOut}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600 text-slate-600 text-xs font-semibold transition-colors shadow-2xs cursor-pointer"
+              title="Oturumu Kapat"
+            >
+              {loggingOut ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <LogOut className="w-3.5 h-3.5" />
+              )}
+              <span>Çıkış Yap</span>
+            </button>
           </div>
         </header>
 
@@ -274,3 +372,4 @@ export default function AdminLayout({
     </div>
   );
 }
+
