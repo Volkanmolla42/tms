@@ -1,10 +1,15 @@
 import type { Metadata } from "next";
+import Script from "next/script";
+import { Suspense } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ConvexClientProvider } from "./ConvexClientProvider";
 import { ConvexAuthNextjsServerProvider } from "@convex-dev/auth/nextjs/server";
 import LiveChatWidget from "@/components/LiveChatWidget";
 import FloatingWhatsApp from "@/components/FloatingWhatsApp";
+import GoogleAnalytics from "@/components/GoogleAnalytics";
+
+const GA_MEASUREMENT_ID = "G-TM4CBE5R5V";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,6 +38,20 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
       >
         <body className="min-h-full flex flex-col">
+          <Script id="google-analytics-init" strategy="afterInteractive">
+            {`window.dataLayer = window.dataLayer || [];
+function gtag(){window.dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', '${GA_MEASUREMENT_ID}', { send_page_view: false });`}
+          </Script>
+          <Script
+            id="google-analytics"
+            src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
+            strategy="afterInteractive"
+          />
+          <Suspense fallback={null}>
+            <GoogleAnalytics />
+          </Suspense>
           <ConvexClientProvider>
             {children}
             <LiveChatWidget />
